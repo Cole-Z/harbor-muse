@@ -37,12 +37,13 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
-<div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"></h2>
+<div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><button id="askX" aria-label="Close" type="button">×</button><p id="askSel"></p>
 <form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form><div id="askOut" aria-live="polite"></div></div>
 <script src="/sun.js"></script>
+<script src="/shiptype.js"></script>
 <script>
 const CENTER=[-97.30,27.78], ZOOM=10, FIT_MAX=12.5, FIT_PAD=48, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
 let here=null, lastSent=null;
@@ -99,7 +100,7 @@ function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(
  for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
   k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
  if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail()}}
-function fillCard(s){$('sName').innerHTML=unk(s.name);$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
+function fillCard(s){$('sNameT').innerHTML=unk(s.name);const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'')}
 let trailFor=null;
 async function loadTrail(){const id=selected;if(!engine||!engine.trail)return;if(!id){trailFor=null;engine.trail([]);return}

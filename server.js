@@ -223,6 +223,13 @@ const server = http.createServer((req, res) => {
       res.end(b);
     });
   }
+  const im = req.method === 'GET' && url.match(/^\/assets\/ship-types\/(cargo|tanker|tug|passenger|fishing|unknown)\.svg$/);
+  if (im) return fs.readFile(path.join(__dirname, 'public', 'assets', 'ship-types', im[1] + '.svg'), (e, b) => {
+    if (e) return send(res, 404, { error: 'not found' });
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' }); res.end(b);
+  });
+  if (req.method === 'GET' && url === '/shiptype.js')
+    return fs.readFile(path.join(__dirname, 'public', 'shiptype.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/sun.js')
     return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && (url === '/' || url === '/index.html'))
