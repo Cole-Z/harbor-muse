@@ -5,6 +5,8 @@ const path = require('path');
 const WebSocket = require('ws');
 const geo = require('./lib/geo');
 const trail = require('./lib/trail');
+const ask = require('./lib/ask');
+const askLimiter = ask.makeLimiter(10, 10 * 60e3);
 
 const PORT = +process.env.PORT || 3000;
 const KEY = process.env.AISSTREAM_API_KEY || '';
@@ -156,6 +158,28 @@ const STATIC = {
   '/icon-512.png': ['icon-512.png', 'image/png'],
   '/icon-maskable-512.png': ['icon-maskable-512.png', 'image/png'],
 };
+// POST /ask: lat/lon/heading/q live only in this function's scope; never stored or logged.
+async function handleAsk(req, res, body) {
+  let j; try { j = JSON.parse(body); } catch { return send(res, 400, { error: 'bad json' }); }
+  const bad = ask.validate(j); if (bad) return send(res, 400, { error: bad });
+  const museKey = process.env.MUSE_API_KEY || '';
+  if (!museKey) return send(res, 503, { error: 'Ask is not configured' });
+  if (!askLimiter.take(viewerId(req))) return send(res, 429, { error: 'Too many questions. Try again in a few minutes.' });
+  const now = Date.now(), useLive = mode() === 'live';
+  const pick = (id) => liveStore.get(id) || replayStore.get(id);
+  const all = list(useLive ? liveStore : replayStore, null, 0, now);
+  if (useLive) for (const s of list(replayStore, null, 0, now)) if (!liveStore.has(s.mmsi)) all.push(s);
+  const ranked = ask.rank(all, j);
+  const loc = j.lat != null ? { lat: +j.lat.toFixed(3), lon: +j.lon.toFixed(3), heading: j.heading ?? null } : null;
+  try {
+    const a = await ask.callSpark({ key: museKey, url: process.env.MUSE_URL || undefined, user: ask.userMessage(j.q.trim(), j.mmsi, loc, ranked) });
+    if (a.mmsi != null && !pick(a.mmsi)) a.mmsi = null;
+    send(res, 200, a);
+  } catch (e) {
+    console.log('ask: failed', e.code || 'error'); // code only
+    send(res, 502, { error: e.code ? e.message : 'Muse had a problem. Try again in a moment.' });
+  }
+}
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'), url = u.pathname;
   if (req.method === 'GET' && url === '/ships') {
@@ -184,7 +208,13 @@ const server = http.createServer((req, res) => {
     return send(res, 200, trailOf(s, Date.now()));
   }
   if (req.method === 'GET' && url === '/health') return send(res, 200, { ok: true, mode: mode(), live: liveState, liveShips: liveStore.size, viewers: viewers.size(), boxes: currentBoxes().length, bboxFallback, replayShips: replayStore.size, replayFrames: replay.length });
-  if (url === '/ask') return send(res, 501, { error: 'Ask is not wired up yet (waiting on Muse endpoint confirmation).' });
+  if (url === '/ask') {
+    if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+    let body = '', big = false;
+    req.on('data', (d) => { if (big) return; body += d; if (body.length > 2048) { big = true; send(res, 413, { error: 'body too large' }); req.destroy(); } });
+    req.on('end', () => { if (!big) handleAsk(req, res, body); });
+    return;
+  }
   if (req.method === 'GET' && STATIC[url]) {
     const [file, type] = STATIC[url];
     return fs.readFile(path.join(__dirname, 'public', file), (e, b) => {
@@ -206,4 +236,4 @@ stepReplay();
 connect();
 server.listen(PORT, () => console.log(`Harbor Muse on http://localhost:${PORT} (${KEY ? 'aisstream key set' : 'no key: replay only'})`));
 }
-module.exports = { ingest, ships, viewers, server, trailOf };
+module.exports = { ingest, ships, viewers, server, trailOf, liveStore, replayStore };
