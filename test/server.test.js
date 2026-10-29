@@ -27,6 +27,10 @@ test('one socket, subscribe on open, SF /view resubscribes, no coords/keys logge
   assert.strictEqual(nearCC.mode, 'waiting', 'no auto-switch to replay even near CC');
   const demo = await (await fetch(base + '/ships?lat=37.8&lon=-122.4&demo=1')).json();
   assert.strictEqual(demo.mode, 'replay'); assert.strictEqual(demo.demo, true); assert.ok(demo.ships.length > 0);
+  const tr = await (await fetch(base + '/ships/' + demo.ships[0].mmsi + '/trail')).json();
+  assert.ok(Array.isArray(tr) && tr.length >= 1 && 'lat' in tr[0] && 'lon' in tr[0] && 't' in tr[0]);
+  assert.ok(!('trail' in demo.ships[0]), '/ships stays small');
+  assert.strictEqual((await fetch(base + '/ships/1/trail')).status, 404);
   // bbox rejection -> single CC box resubscribe on the same socket
   [...wss.clients][0].send(JSON.stringify({ error: 'Too many BoundingBoxes' }));
   await wait(1300);
