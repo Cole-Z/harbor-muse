@@ -168,6 +168,8 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && url === '/health') return send(res, 200, { ok: true, mode: mode(), live: liveState, liveShips: liveStore.size, viewers: viewers.size(), boxes: currentBoxes().length, bboxFallback, replayShips: replayStore.size, replayFrames: replay.length });
   if (url === '/ask') return send(res, 501, { error: 'Ask is not wired up yet (waiting on Muse endpoint confirmation).' });
+  if (req.method === 'GET' && url === '/sun.js')
+    return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && (url === '/' || url === '/index.html'))
     return fs.readFile(path.join(__dirname, 'public', 'index.html'), (e, b) => e ? send(res, 500, { error: 'missing page' }) : send(res, 200, b, 'text/html; charset=utf-8'));
   send(res, 404, { error: 'not found' });
