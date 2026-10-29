@@ -22,6 +22,7 @@
 .ship{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .ship svg{filter:drop-shadow(0 1px 1px #0006)}.ship.stale{opacity:.35}
 .ship.sel svg path{fill:#d00}
+html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[data-theme=night] #credits a{color:#9cf}
 </style></head><body>
 <div id="map"></div>
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
@@ -29,6 +30,7 @@
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"></h2>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl></div>
+<script src="/sun.js"></script>
 <script>
 const CENTER=[-97.30,27.78], ZOOM=10.3, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
 let here=null, lastSent=null;
@@ -38,7 +40,7 @@ function sendView(force){if(!here)return;if(!force&&lastSent&&km(here,lastSent)<
  fetch('/view',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(here)}).catch(()=>{})}
 function center(){if(!map||!here)return;map.setView?map.setView([here.lat,here.lon],11):map.jumpTo({center:[here.lon,here.lat],zoom:11})}
 function locate(){if(!navigator.geolocation)return;const ok=p=>{const first=!here;here={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy||0)};
- if(first){center();sendView(true);poll()}else sendView(false)};
+ if(first){refreshTheme();center();sendView(true);poll()}else sendView(false)};
  navigator.geolocation.getCurrentPosition(ok,()=>{},{enableHighAccuracy:false,timeout:8000,maximumAge:60000});
  navigator.geolocation.watchPosition(ok,()=>{},{enableHighAccuracy:false,timeout:30000,maximumAge:60000});
  setInterval(()=>sendView(true),30000)}
@@ -47,20 +49,31 @@ const TYPES={30:'Fishing',31:'Towing',32:'Towing',33:'Dredging',35:'Military',36
 function typeName(t){if(t==null||t===0)return null;if(TYPES[t])return TYPES[t];const d=Math.floor(t/10);return {2:'Wing in ground',4:'High-speed craft',6:'Passenger',7:'Cargo',8:'Tanker',9:'Other'}[d]||('Type '+t)}
 const unk=v=>v==null||v===''?'<span class="unk">unknown</span>':String(v).replace(/[<>&]/g,'');
 let ships={}, selected=null, map, engine;
+// Day/night: viewer-local sunrise/sunset (falls back to CENTER until location is known). Markers are DOM markers, so setStyle keeps them.
+let curTheme=null, applyTheme=()=>{};
+const STYLES={day:'https://tiles.openfreemap.org/styles/positron',night:'https://tiles.openfreemap.org/styles/dark'};
+const styleUrl=t=>STYLES[t];
+function theme(){const p=here||{lat:CENTER[1],lon:CENTER[0]};return window.Sun&&!Sun.isDay(new Date(),p.lat,p.lon)?'night':'day'}
+function setThemeClass(){document.documentElement.dataset.theme=theme()}
+const AIS_CREDIT=' · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a>';
+const OSM_CREDIT='© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'+AIS_CREDIT;
+const CARTO_CREDIT='© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions" target="_blank">CARTO</a>'+AIS_CREDIT;
+function refreshTheme(){setThemeClass();applyTheme()}
+setInterval(refreshTheme,12*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTheme()});
 const markers=new Map();
 function icon(){return '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2 L19 21 L12 17 L5 21 Z" fill="#1d4ed8" stroke="#fff" stroke-width="1.5"/></svg>'}
 function rot(s){return s.hdg??s.cog??0}
 function makeEl(s){const el=document.createElement('div');el.className='ship';el.innerHTML=icon();el.setAttribute('role','button');el.setAttribute('aria-label',s.name||('MMSI '+s.mmsi));
  el.addEventListener('click',e=>{e.stopPropagation();openCard(s.mmsi)});return el}
 // map engines: MapLibre first, Leaflet + OSM raster fallback
-function initMapLibre(){map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:CENTER,zoom:ZOOM,attributionControl:false});
- map.on('click',closeCard);engine={add(s){const el=makeEl(s);const m=new maplibregl.Marker({element:el,rotationAlignment:'map'}).setLngLat([s.lon,s.lat]).addTo(map);return {m,el}},
+function initMapLibre(){curTheme=theme();setThemeClass();map=new maplibregl.Map({container:'map',style:styleUrl(curTheme),center:CENTER,zoom:ZOOM,attributionControl:false});
+ map.on('click',closeCard);applyTheme=()=>{const t=theme();if(t!==curTheme){curTheme=t;map.setStyle(styleUrl(t))}};engine={add(s){const el=makeEl(s);const m=new maplibregl.Marker({element:el,rotationAlignment:'map'}).setLngLat([s.lon,s.lat]).addTo(map);return {m,el}},
  move(k,s){k.m.setLngLat([s.lon,s.lat]);k.m.setRotation(rot(s))},remove(k){k.m.remove()},
  trail(pts){if(!map.isStyleLoaded())return;const data={type:'Feature',geometry:{type:'LineString',coordinates:pts.map(p=>[p.lon,p.lat])}};const src=map.getSource('trail');
   if(src)src.setData(data);else{map.addSource('trail',{type:'geojson',data});map.addLayer({id:'trail',type:'line',source:'trail',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#d00','line-width':2,'line-opacity':.7}})}}}}
 function initLeaflet(){return new Promise(r=>{const c=document.createElement('link');c.rel='stylesheet';c.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(c);
  const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.onload=()=>{map=L.map('map',{attributionControl:false,zoomControl:false}).setView([CENTER[1],CENTER[0]],10);
- L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);map.on('click',closeCard);
+ let tl;applyTheme=()=>{const t=theme();if(t===curTheme)return;curTheme=t;if(tl)tl.remove();tl=(t==='night'?L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}):L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19})).addTo(map);$('credits').innerHTML=t==='night'?CARTO_CREDIT:OSM_CREDIT};applyTheme();map.on('click',closeCard);
  $('credits').innerHTML='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · AIS data via <a href="https://aisstream.io">aisstream.io</a>';
  engine={add(s){const el=makeEl(s);const m=L.marker([s.lat,s.lon],{icon:L.divIcon({html:el,className:'',iconSize:[30,30]})}).addTo(map);return {m,el}},
  move(k,s){k.m.setLatLng([s.lat,s.lon]);const svg=k.el.querySelector('svg');svg.style.transform='rotate('+rot(s)+'deg)'},remove(k){k.m.remove()},
