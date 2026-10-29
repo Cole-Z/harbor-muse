@@ -34,15 +34,20 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl></div>
 <script src="/sun.js"></script>
 <script>
-const CENTER=[-97.30,27.78], ZOOM=10.3, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
+const CENTER=[-97.30,27.78], ZOOM=10, FIT_MAX=12.5, FIT_PAD=48, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
 let here=null, lastSent=null;
 const VID=sessionStorage.vid||(sessionStorage.vid=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)));
 const km=(a,b)=>{const R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lon-a.lon)*r;return 2*R*Math.asin(Math.sqrt(Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2))};
 function sendView(force){if(!here)return;if(!force&&lastSent&&km(here,lastSent)<2)return;lastSent={...here};
  fetch('/view',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(here)}).catch(()=>{})}
-function center(){if(!map||!here)return;map.setView?map.setView([here.lat,here.lon],11):map.jumpTo({center:[here.lon,here.lat],zoom:11})}
+function center(){if(!map||!here)return;map.setView?map.setView([here.lat,here.lon],ZOOM):map.jumpTo({center:[here.lon,here.lat],zoom:ZOOM})}
+let fitted=false;// fit ships once per view (first load / demo toggle), then leave the user's pan/zoom alone
+function fitShips(list){if(fitted||!map)return;const pts=list.filter(s=>isFinite(s.lat)&&isFinite(s.lon));if(!pts.length)return;fitted=true;
+ let w=180,e=-180,so=90,n=-90;for(const s of pts){w=Math.min(w,s.lon);e=Math.max(e,s.lon);so=Math.min(so,s.lat);n=Math.max(n,s.lat)}
+ if(here&&!demo){w=Math.min(w,here.lon);e=Math.max(e,here.lon);so=Math.min(so,here.lat);n=Math.max(n,here.lat)}
+ try{if(map.fitBounds&&window.L&&map instanceof L.Map)map.fitBounds([[so,w],[n,e]],{padding:[FIT_PAD,FIT_PAD],maxZoom:Math.floor(FIT_MAX)});else map.fitBounds([[w,so],[e,n]],{padding:FIT_PAD,maxZoom:FIT_MAX,duration:600})}catch{}}
 function locate(){if(!navigator.geolocation)return;const ok=p=>{const first=!here;here={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy||0)};
- if(first){refreshTheme();center();sendView(true);poll()}else sendView(false)};
+ if(first){refreshTheme();center();fitted=false;sendView(true);poll()}else sendView(false)};
  navigator.geolocation.getCurrentPosition(ok,()=>{},{enableHighAccuracy:false,timeout:8000,maximumAge:60000});
  navigator.geolocation.watchPosition(ok,()=>{},{enableHighAccuracy:false,timeout:30000,maximumAge:60000});
  setInterval(()=>sendView(true),30000)}
@@ -95,9 +100,9 @@ function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);$('sheet').classList
 function closeCard(){selected=null;$('sheet').classList.remove('open');render();loadTrail()}
 $('close').onclick=closeCard;
 let demo=false; // explicit opt-in only; never auto-switched
-$('demoBtn').onclick=()=>{demo=!demo;if(demo&&map){map.setView?map.setView([CENTER[1],CENTER[0]],ZOOM):map.jumpTo({center:CENTER,zoom:ZOOM})}else center();poll()};
+$('demoBtn').onclick=()=>{demo=!demo;fitted=false;if(demo&&map){map.setView?map.setView([CENTER[1],CENTER[0]],ZOOM):map.jumpTo({center:CENTER,zoom:ZOOM})}else center();poll()};
 async function poll(){if(document.hidden)return;try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4)+(demo?'&demo=1':''):'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
- const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
+ const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 (async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
