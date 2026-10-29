@@ -30,7 +30,7 @@ test('ranking: tapped mmsi first, then heading cone, nearest moving, largest', (
 });
 test('parseAnswer: schema enforced', () => {
   assert.deepStrictEqual(ask.parseAnswer('{"answer":"A tug.","mmsi":1,"confidence":"high"}'), { answer: 'A tug.', mmsi: 1, confidence: 'high' });
-  for (const c of ['nope', '{"answer":"x","mmsi":1,"confidence":"maybe"}', '{"answer":"","mmsi":null,"confidence":"low"}', '{"answer":"x","mmsi":"1","confidence":"low"}'])
+  for (const c of ['nope', '{"answer":"x","mmsi":1,"confidence":"maybe"}', '{"answer":"","mmsi":null,"confidence":"low"}', '{"answer":"x","mmsi":"12a","confidence":"low"}'])
     assert.throws(() => ask.parseAnswer(c), (e) => e.code === 502);
 });
 
@@ -80,4 +80,63 @@ test('rate limit -> 429 after 10', async () => {
   const v = 'ratelimitviewer1';
   for (let i = 0; i < 10; i++) assert.strictEqual((await post({ q: 'hi' }, v)).status, 200);
   assert.strictEqual((await post({ q: 'hi' }, v)).status, 429);
+});
+
+test('callSpark retries 404 model_not_found then succeeds, sends reasoning_effort minimal', async () => {
+  const { callSpark } = require('../lib/ask');
+  let n = 0, sent; const slept = [];
+  const ok = { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ answer: 'A', mmsi: null, confidence: 'low' }) } }] }) };
+  const nf = { ok: false, status: 404, json: async () => ({ error: { code: 'model_not_found' } }) };
+  const fetchImpl = async (u, o) => { sent = JSON.parse(o.body); return ++n < 3 ? nf : ok; };
+  const a = await callSpark({ key: 'k', user: 'u', fetchImpl, sleep: async (ms) => slept.push(ms) });
+  assert.equal(n, 3); assert.equal(slept.length, 2); assert.equal(a.answer, 'A');
+  assert.equal(sent.reasoning_effort, 'minimal'); assert.equal(sent.max_tokens, 800);
+  assert.ok(slept[0] >= 400 && slept[0] <= 600 && slept[1] >= 800 && slept[1] <= 1200);
+});
+
+test('callSpark gives up after 5×1.3 + 3×contributor on 404 with 502; no retry on 400', async () => {
+  const { callSpark } = require('../lib/ask');
+  for (const [status, calls] of [[404, 8], [400, 1], [502, 1]]) {
+    let n = 0;
+    const fetchImpl = async () => { n++; return { ok: false, status, json: async () => ({}) }; };
+    await assert.rejects(callSpark({ key: 'k', user: 'u', fetchImpl, sleep: async () => {}, log: () => {} }), (e) => e.code === 502);
+    assert.equal(n, calls);
+  }
+});
+
+test('schema mmsi is string|null; parseAnswer normalizes string mmsi to number', () => {
+  const { parseAnswer, SCHEMA } = require('../lib/ask');
+  assert.deepEqual(SCHEMA.json_schema.schema.properties.mmsi.type, ['string', 'null']);
+  assert.equal(parseAnswer('{"answer":"A","mmsi":"367000001","confidence":"high"}').mmsi, 367000001);
+  assert.equal(parseAnswer('{"answer":"A","mmsi":null,"confidence":"low"}').mmsi, null);
+  assert.equal(parseAnswer('{"answer":"A","mmsi":"","confidence":"low"}').mmsi, null);
+  assert.throws(() => parseAnswer('{"answer":"A","mmsi":"abc","confidence":"low"}'));
+});
+
+test('callSpark falls back to muse-spark-1.2-contributor after 5×404 on 1.3, same request shape', async () => {
+  const { callSpark, FALLBACK_MODEL } = require('../lib/ask');
+  const bodies = [], logs = [];
+  const nf = { ok: false, status: 404, json: async () => ({ error: { code: 'model_not_found' } }) };
+  const ok = { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop',
+    message: { content: '{"answer":"TEST BOAT","mmsi":"367000001","confidence":"high"}' } }] }) };
+  const fetchImpl = async (u, o) => { const b = JSON.parse(o.body); bodies.push(b); return b.model === 'muse-spark-1.3' ? nf : ok; };
+  const a = await callSpark({ key: 'secret-k', user: 'u', fetchImpl, sleep: async () => {}, log: (m) => logs.push(m) });
+  assert.deepEqual(a, { answer: 'TEST BOAT', mmsi: 367000001, confidence: 'high' });
+  assert.equal(bodies.length, 6);
+  assert.ok(bodies.slice(0, 5).every((b) => b.model === 'muse-spark-1.3'));
+  assert.equal(bodies[5].model, FALLBACK_MODEL);
+  assert.equal(FALLBACK_MODEL, 'muse-spark-1.2-contributor');
+  const { model: _a, ...s0 } = bodies[0], { model: _b, ...s5 } = bodies[5];
+  assert.deepEqual(s5, s0);
+  assert.equal(s5.reasoning_effort, 'minimal'); assert.equal(s5.max_tokens, 800);
+  assert.deepEqual(logs, ['ask fallback:contributor']);
+  assert.ok(!logs.join().includes('secret-k'));
+});
+
+test('callSpark does not fall back on non-model_not_found 404', async () => {
+  const { callSpark } = require('../lib/ask');
+  const models = [];
+  const fetchImpl = async (u, o) => { models.push(JSON.parse(o.body).model); return { ok: false, status: 404, json: async () => ({ error: { code: 'not_found' } }) }; };
+  await assert.rejects(callSpark({ key: 'k', user: 'u', fetchImpl, sleep: async () => {}, log: () => {} }), (e) => e.code === 502);
+  assert.ok(models.every((m) => m === 'muse-spark-1.3'));
 });
