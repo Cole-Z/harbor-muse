@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Harbor Muse</title><meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:16px/1.35 system-ui,-apple-system,sans-serif;color:#111;background:#eef2f5}
+#map{position:fixed;inset:0}
+#top{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:5;pointer-events:none}
+.pill{pointer-events:auto;background:#fff;border-radius:999px;padding:8px 14px;box-shadow:0 2px 8px #0003;font-weight:700}
+#badge.live{background:#0a7d32;color:#fff}#badge.replay{background:#b45309;color:#fff}
+#title{margin-right:auto}
+#credits{position:fixed;left:0;right:0;bottom:0;z-index:4;background:#fffd;font-size:12px;padding:4px 8px calc(env(safe-area-inset-bottom) + 4px);text-align:center}
+#credits a{color:#124}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -4px 18px #0004;padding:14px 18px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(110%);transition:transform .2s;min-height:35vh}
+#sheet.open{transform:none}
+#sheet h2{margin:4px 40px 10px 0;font-size:22px}
+#sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}
+#close{position:absolute;right:10px;top:8px;width:44px;height:44px;border:0;background:#eee;border-radius:50%;font-size:22px}
+.unk{color:#888;font-weight:400}
+.ship{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ship svg{filter:drop-shadow(0 1px 1px #0006)}.ship.stale{opacity:.35}
+.ship.sel svg path{fill:#d00}
+</style></head><body>
+<div id="map"></div>
+<div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
+<div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
+<div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"></h2>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl></div>
+<script>
+const CENTER=[-97.30,27.78], ZOOM=10.3, POLL=5000;
+const $=id=>document.getElementById(id);
+const TYPES={30:'Fishing',31:'Towing',32:'Towing',33:'Dredging',35:'Military',36:'Sailing',37:'Pleasure craft',50:'Pilot',51:'Search & rescue',52:'Tug',53:'Port tender',55:'Law enforcement',58:'Medical'};
+function typeName(t){if(t==null||t===0)return null;if(TYPES[t])return TYPES[t];const d=Math.floor(t/10);return {2:'Wing in ground',4:'High-speed craft',6:'Passenger',7:'Cargo',8:'Tanker',9:'Other'}[d]||('Type '+t)}
+const unk=v=>v==null||v===''?'<span class="unk">unknown</span>':String(v).replace(/[<>&]/g,'');
+let ships={}, selected=null, map, engine;
+const markers=new Map();
+function icon(){return '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2 L19 21 L12 17 L5 21 Z" fill="#1d4ed8" stroke="#fff" stroke-width="1.5"/></svg>'}
+function rot(s){return s.hdg??s.cog??0}
+function makeEl(s){const el=document.createElement('div');el.className='ship';el.innerHTML=icon();el.setAttribute('role','button');el.setAttribute('aria-label',s.name||('MMSI '+s.mmsi));
+ el.addEventListener('click',e=>{e.stopPropagation();openCard(s.mmsi)});return el}
+// map engines: MapLibre first, Leaflet + OSM raster fallback
+function initMapLibre(){map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:CENTER,zoom:ZOOM,attributionControl:false});
+ map.on('click',closeCard);engine={add(s){const el=makeEl(s);const m=new maplibregl.Marker({element:el,rotationAlignment:'map'}).setLngLat([s.lon,s.lat]).addTo(map);return {m,el}},
+ move(k,s){k.m.setLngLat([s.lon,s.lat]);k.m.setRotation(rot(s))},remove(k){k.m.remove()}}}
+function initLeaflet(){return new Promise(r=>{const c=document.createElement('link');c.rel='stylesheet';c.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(c);
+ const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.onload=()=>{map=L.map('map',{attributionControl:false,zoomControl:false}).setView([CENTER[1],CENTER[0]],10);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);map.on('click',closeCard);
+ $('credits').innerHTML='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · AIS data via <a href="https://aisstream.io">aisstream.io</a>';
+ engine={add(s){const el=makeEl(s);const m=L.marker([s.lat,s.lon],{icon:L.divIcon({html:el,className:'',iconSize:[30,30]})}).addTo(map);return {m,el}},
+ move(k,s){k.m.setLatLng([s.lat,s.lon]);const svg=k.el.querySelector('svg');svg.style.transform='rotate('+rot(s)+'deg)'},remove(k){k.m.remove()}};r()};document.head.appendChild(s)})}
+function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(k);markers.delete(mmsi)}
+ for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
+  k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
+ if(selected&&ships[selected])fillCard(ships[selected])}
+function fillCard(s){$('sName').innerHTML=unk(s.name);$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
+ $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'')}
+function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);$('sheet').classList.add('open');render()}
+function closeCard(){selected=null;$('sheet').classList.remove('open');render()}
+$('close').onclick=closeCard;
+async function poll(){if(document.hidden)return;try{const r=await fetch('/ships',{cache:'no-store'});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
+ const b=$('badge');b.textContent=d.mode.toUpperCase();b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
+function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
+function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+(async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
+ poll();setInterval(poll,POLL);document.addEventListener('visibilitychange',poll)})();
+</script></body></html>

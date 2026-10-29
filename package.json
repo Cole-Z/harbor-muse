@@ -1,0 +1,25 @@
+{
+  "name": "harbor-muse",
+  "version": "0.1.0",
+  "description": "Live ship map for Corpus Christi Bay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cole-Z/harbor-muse.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Cole-Z/harbor-muse/issues"
+  },
+  "homepage": "https://github.com/Cole-Z/harbor-muse#readme",
+  "dependencies": {
+    "ws": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
