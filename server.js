@@ -148,6 +148,14 @@ const viewerId = (req) => {
   const h = String(req.headers['x-viewer'] || '');
   return /^[A-Za-z0-9_-]{8,64}$/.test(h) ? 'v:' + h : 'ip:' + (req.socket.remoteAddress || '?');
 };
+// PWA shell files (manifest, service worker, icons) served with correct types.
+const STATIC = {
+  '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'],
+  '/sw.js': ['sw.js', 'text/javascript; charset=utf-8'],
+  '/icon-192.png': ['icon-192.png', 'image/png'],
+  '/icon-512.png': ['icon-512.png', 'image/png'],
+  '/icon-maskable-512.png': ['icon-maskable-512.png', 'image/png'],
+};
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'), url = u.pathname;
   if (req.method === 'GET' && url === '/ships') {
@@ -177,6 +185,14 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && url === '/health') return send(res, 200, { ok: true, mode: mode(), live: liveState, liveShips: liveStore.size, viewers: viewers.size(), boxes: currentBoxes().length, bboxFallback, replayShips: replayStore.size, replayFrames: replay.length });
   if (url === '/ask') return send(res, 501, { error: 'Ask is not wired up yet (waiting on Muse endpoint confirmation).' });
+  if (req.method === 'GET' && STATIC[url]) {
+    const [file, type] = STATIC[url];
+    return fs.readFile(path.join(__dirname, 'public', file), (e, b) => {
+      if (e) return send(res, 404, { error: 'not found' });
+      res.writeHead(200, { 'Content-Type': type, 'Cache-Control': file === 'sw.js' ? 'no-cache' : 'public, max-age=3600', ...(file === 'sw.js' ? { 'Service-Worker-Allowed': '/' } : {}) });
+      res.end(b);
+    });
+  }
   if (req.method === 'GET' && url === '/sun.js')
     return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && (url === '/' || url === '/index.html'))

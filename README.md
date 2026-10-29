@@ -42,6 +42,8 @@ Open `http://localhost:3000` (set `PORT` to change it). Geolocation needs a secu
 | `GET /health` | status of the feed and replay |
 | `POST /ask` | not wired up yet (returns 501) |
 
+**Add to Home Screen (PWA).** Harbor Muse ships a web manifest and a small service worker, so it can be installed: iOS Safari → Share → Add to Home Screen; Android Chrome → menu → Install app. It opens full-screen. The service worker caches only the app shell (page, manifest, icons); map tiles, the map library CDN, and live ship data always go to the network and are never cached. Offline you get the shell, not the map. Installing needs HTTPS (or `localhost`).
+
 Rebuild the replay file from recordings: `node tools/build-replay.js recording.jsonl ...` (capped at 2 MB). Record more: `node tools/record.js recording.jsonl 30`.
 
 ## Roadmap
