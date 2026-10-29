@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 const geo = require('./lib/geo');
+const trail = require('./lib/trail');
 
 const PORT = +process.env.PORT || 3000;
 const KEY = process.env.AISSTREAM_API_KEY || '';
@@ -40,6 +41,7 @@ function ingest(store, msg, now) {
     if (m.Type) s.type = m.Type;
     if (!s.name) s.name = clean(md.ShipName);
     s.posAt = now;
+    trail.push(s, s.lat, s.lon, now);
   } else return false;
   store.set(mmsi, s);
   return s.posAt === now;
@@ -138,6 +140,7 @@ function ships(c, r = RADIUS, demo = false) {
   const md = mode(), cc = md === 'live' ? geo.CC_CENTER : null;
   return { mode: md, area: 'Corpus Christi', demo: !!demo, asOf, ships: list(md === 'live' ? liveStore : replayStore, cc, 1, now) };
 }
+const trailOf = (s, now) => trail.trim(s, now).map((p) => ({ lat: p.lat, lon: p.lon, t: p.t }));
 const send = (res, code, obj, type = 'application/json') => {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' }); res.end(type === 'application/json' ? JSON.stringify(obj) : obj);
 };
@@ -166,6 +169,12 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  const tm = req.method === 'GET' && url.match(/^\/ships\/(\d{1,9})\/trail$/);
+  if (tm) { // small per-ship endpoint so /ships stays lean
+    const id = +tm[1], s = liveStore.get(id) || replayStore.get(id);
+    if (!s) return send(res, 404, { error: 'unknown ship' });
+    return send(res, 200, trailOf(s, Date.now()));
+  }
   if (req.method === 'GET' && url === '/health') return send(res, 200, { ok: true, mode: mode(), live: liveState, liveShips: liveStore.size, viewers: viewers.size(), boxes: currentBoxes().length, bboxFallback, replayShips: replayStore.size, replayFrames: replay.length });
   if (url === '/ask') return send(res, 501, { error: 'Ask is not wired up yet (waiting on Muse endpoint confirmation).' });
   if (req.method === 'GET' && url === '/sun.js')
@@ -181,4 +190,4 @@ stepReplay();
 connect();
 server.listen(PORT, () => console.log(`Harbor Muse on http://localhost:${PORT} (${KEY ? 'aisstream key set' : 'no key: replay only'})`));
 }
-module.exports = { ingest, ships, viewers, server };
+module.exports = { ingest, ships, viewers, server, trailOf };
