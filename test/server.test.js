@@ -22,8 +22,17 @@ test('one socket, subscribe on open, SF /view resubscribes, no coords/keys logge
   assert.deepStrictEqual(msgs[1].BoundingBoxes[1], [[37.6, -122.6], [38, -122.2]]);
   const far = await (await fetch(base + '/ships', { headers: H })).json();
   assert.strictEqual(far.mode, 'waiting'); assert.strictEqual(far.ships.length, 0);
+  assert.strictEqual(far.note, 'No ships nearby right now'); assert.strictEqual(far.demoAvailable, true);
+  const nearCC = await (await fetch(base + '/ships?lat=27.8&lon=-97.3')).json();
+  assert.strictEqual(nearCC.mode, 'waiting', 'no auto-switch to replay even near CC');
+  const demo = await (await fetch(base + '/ships?lat=37.8&lon=-122.4&demo=1')).json();
+  assert.strictEqual(demo.mode, 'replay'); assert.strictEqual(demo.demo, true); assert.ok(demo.ships.length > 0);
+  // bbox rejection -> single CC box resubscribe on the same socket
+  [...wss.clients][0].send(JSON.stringify({ error: 'Too many BoundingBoxes' }));
+  await wait(1300);
+  assert.deepStrictEqual(msgs.at(-1).BoundingBoxes, [[[27.58, -97.42], [27.9, -97.03]]]); assert.strictEqual(conns, 1);
   const home = await (await fetch(base + '/ships')).json();
   assert.strictEqual(home.mode, 'replay'); assert.ok(home.ships.length > 0);
   p.kill(); wss.close();
-  assert.ok(!/TESTKEY123|37\.8|122\.4/.test(log), 'log leaked key or coords');
+  assert.ok(!/TESTKEY123|37\.8|122\.4|Too many/.test(log), 'log leaked key or coords');
 });

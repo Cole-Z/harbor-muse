@@ -4,7 +4,7 @@
   "description": "Live US ship map centered on your location",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node start.js",
     "test": "node --test test/"
   },
   "repository": {
@@ -20,7 +20,7 @@
     "ws": "^8.22.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.6"
   },
   "private": true
 }

@@ -19,23 +19,25 @@
 
 ## Run it
 
-Needs Node 18+. One server file, one HTML page, no build step.
+Needs Node 20.6+ (uses Node's built-in `--env-file`, no dotenv). One server file, one HTML page, no build step.
 
 ```bash
 git clone https://github.com/Cole-Z/harbor-muse.git
 cd harbor-muse
 npm install
-cp .env.example .env   # or export the variables in your shell
-export AISSTREAM_API_KEY=your_key   # optional, free at aisstream.io
-export MUSE_API_KEY=your_key        # for Ask (coming soon)
-npm start
+cp .env.example .env   # then fill in AISSTREAM_API_KEY (free at aisstream.io) and MUSE_API_KEY (Ask, coming soon)
+npm start              # runs node --env-file=.env server.js; without a .env it just runs node server.js
 ```
+
+Hosted (Render, Fly, …): set `AISSTREAM_API_KEY` / `MUSE_API_KEY` as host env vars and run `node server.js`.
+
+If live ships aren't near you, the map says "No ships nearby right now" and offers "Watch Corpus Christi demo (replay)"; it never switches to the Texas replay on its own. The subscription is soft-capped at 10 bounding boxes (Corpus Christi box always kept, overlapping boxes merged, oldest viewers dropped first); if aisstream rejects the boxes the server falls back to the Corpus Christi box.
 
 Open `http://localhost:3000` (set `PORT` to change it). Geolocation needs a secure context: `localhost` works, hosted copies need HTTPS. Keys live only on the server (see `.env.example`); people using a hosted copy never paste a key. The server keeps one aisstream connection and subscribes to the Corpus Christi demo box plus a box around each active viewer.
 
 | Endpoint | What |
 |---|---|
-| `GET /ships?lat=&lon=&radiusDeg=` | `{mode: "live"\|"replay"\|"waiting", asOf, ships: [{mmsi, name, type, lat, lon, sog, cog, hdg, dest, ageSec, stale}], note?}`, filtered to your area |
+| `GET /ships?lat=&lon=&radiusDeg=&demo=1` | `{mode: "live"\|"replay"\|"waiting", asOf, ships: [{mmsi, name, type, lat, lon, sog, cog, hdg, dest, ageSec, stale}], note?}`, filtered to your area |
 | `POST /view` | `{lat, lon, accuracy?}` (US only); adds your area to the live subscription for 10 min |
 | `GET /health` | status of the feed and replay |
 | `POST /ask` | not wired up yet (returns 501) |

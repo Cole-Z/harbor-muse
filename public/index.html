@@ -25,7 +25,7 @@
 </style></head><body>
 <div id="map"></div>
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
-<div id="note"></div>
+<div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"></h2>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl></div>
@@ -71,8 +71,10 @@ function fillCard(s){$('sName').innerHTML=unk(s.name);$('sType').innerHTML=unk(t
 function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);$('sheet').classList.add('open');render()}
 function closeCard(){selected=null;$('sheet').classList.remove('open');render()}
 $('close').onclick=closeCard;
-async function poll(){if(document.hidden)return;try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4):'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
- const b=$('badge');b.textContent=d.mode.toUpperCase();b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note');n.textContent=d.note||'';n.style.display=d.note?'block':'none';render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
+let demo=false; // explicit opt-in only; never auto-switched
+$('demoBtn').onclick=()=>{demo=!demo;if(demo&&map){map.setView?map.setView([CENTER[1],CENTER[0]],ZOOM):map.jumpTo({center:CENTER,zoom:ZOOM})}else center();poll()};
+async function poll(){if(document.hidden)return;try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4)+(demo?'&demo=1':''):'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
+ const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 (async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}

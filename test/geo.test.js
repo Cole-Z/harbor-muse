@@ -26,3 +26,16 @@ test('subscriber: change-only, ≤1/s, queued latest wins', () => {
   t = 1000; timers[0][0](); assert.deepStrictEqual(sent, [[1], [3]]);
   s.reset(); s.update([3]); assert.strictEqual(sent.length, 3); // reconnect resends immediately
 });
+
+test('soft cap: ≤10 boxes, CC always kept, oldest viewers dropped, overlaps merged', () => {
+  let t = 0; const v = geo.makeViewers(() => t);
+  for (let i = 0; i < 15; i++) { t = i * 1000; v.set('v' + i, 30 + i, -120 + i * 0.01 * 0 - (i % 2) * 0); }
+  const b = v.boxes();
+  assert.strictEqual(b.length, geo.MAX_BOXES);
+  assert.deepStrictEqual(b[0], geo.CC_BOX);
+  assert.ok(b.some((x) => x[0][0] === 43.8), 'newest viewer kept');
+  assert.ok(!b.some((x) => x[0][0] === 29.8), 'oldest viewer dropped');
+  const m = geo.capBoxes([[[37.6, -122.6], [38, -122.2]], [[37.8, -122.4], [38.2, -122]]]);
+  assert.deepStrictEqual(m, [geo.CC_BOX, [[37.6, -122.6], [38.2, -122]]]);
+  assert.deepStrictEqual(geo.capBoxes([[[27.6, -97.4], [27.8, -97.1]]]), [geo.CC_BOX]); // inside CC
+});
