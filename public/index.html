@@ -8,7 +8,8 @@
 #map{position:fixed;inset:0}
 #top{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:5;pointer-events:none}
 .pill{pointer-events:auto;background:#fff;border-radius:999px;padding:8px 14px;box-shadow:0 2px 8px #0003;font-weight:700}
-#badge.live{background:#0a7d32;color:#fff}#badge.replay{background:#b45309;color:#fff}
+#badge.live{background:#0a7d32;color:#fff}#badge.replay{background:#b45309;color:#fff}#badge.waiting{background:#475569;color:#fff}
+#note{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top) + 60px);z-index:5;background:#fff;border-radius:12px;padding:8px 12px;box-shadow:0 2px 8px #0003;font-size:14px;display:none}
 #title{margin-right:auto}
 #credits{position:fixed;left:0;right:0;bottom:0;z-index:4;background:#fffd;font-size:12px;padding:4px 8px calc(env(safe-area-inset-bottom) + 4px);text-align:center}
 #credits a{color:#124}
@@ -24,11 +25,23 @@
 </style></head><body>
 <div id="map"></div>
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
+<div id="note"></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"></h2>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl></div>
 <script>
-const CENTER=[-97.30,27.78], ZOOM=10.3, POLL=5000;
+const CENTER=[-97.30,27.78], ZOOM=10.3, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
+let here=null, lastSent=null;
+const VID=sessionStorage.vid||(sessionStorage.vid=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)));
+const km=(a,b)=>{const R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lon-a.lon)*r;return 2*R*Math.asin(Math.sqrt(Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2))};
+function sendView(force){if(!here)return;if(!force&&lastSent&&km(here,lastSent)<2)return;lastSent={...here};
+ fetch('/view',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(here)}).catch(()=>{})}
+function center(){if(!map||!here)return;map.setView?map.setView([here.lat,here.lon],11):map.jumpTo({center:[here.lon,here.lat],zoom:11})}
+function locate(){if(!navigator.geolocation)return;const ok=p=>{const first=!here;here={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy||0)};
+ if(first){center();sendView(true);poll()}else sendView(false)};
+ navigator.geolocation.getCurrentPosition(ok,()=>{},{enableHighAccuracy:false,timeout:8000,maximumAge:60000});
+ navigator.geolocation.watchPosition(ok,()=>{},{enableHighAccuracy:false,timeout:30000,maximumAge:60000});
+ setInterval(()=>sendView(true),30000)}
 const $=id=>document.getElementById(id);
 const TYPES={30:'Fishing',31:'Towing',32:'Towing',33:'Dredging',35:'Military',36:'Sailing',37:'Pleasure craft',50:'Pilot',51:'Search & rescue',52:'Tug',53:'Port tender',55:'Law enforcement',58:'Medical'};
 function typeName(t){if(t==null||t===0)return null;if(TYPES[t])return TYPES[t];const d=Math.floor(t/10);return {2:'Wing in ground',4:'High-speed craft',6:'Passenger',7:'Cargo',8:'Tanker',9:'Other'}[d]||('Type '+t)}
@@ -58,10 +71,10 @@ function fillCard(s){$('sName').innerHTML=unk(s.name);$('sType').innerHTML=unk(t
 function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);$('sheet').classList.add('open');render()}
 function closeCard(){selected=null;$('sheet').classList.remove('open');render()}
 $('close').onclick=closeCard;
-async function poll(){if(document.hidden)return;try{const r=await fetch('/ships',{cache:'no-store'});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
- const b=$('badge');b.textContent=d.mode.toUpperCase();b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
+async function poll(){if(document.hidden)return;try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4):'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
+ const b=$('badge');b.textContent=d.mode.toUpperCase();b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note');n.textContent=d.note||'';n.style.display=d.note?'block':'none';render()}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 (async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
- poll();setInterval(poll,POLL);document.addEventListener('visibilitychange',poll)})();
+ center();locate();poll();setInterval(poll,POLL);document.addEventListener('visibilitychange',poll)})();
 </script></body></html>

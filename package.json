@@ -1,10 +1,11 @@
 {
   "name": "harbor-muse",
   "version": "0.1.0",
-  "description": "Live ship map for Corpus Christi Bay",
+  "description": "Live US ship map centered on your location",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/"
   },
   "repository": {
     "type": "git",
