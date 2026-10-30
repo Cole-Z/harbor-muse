@@ -299,6 +299,8 @@ const server = http.createServer((req, res) => {
     return fs.readFile(path.join(__dirname, 'public', 'cone.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/sun.js')
     return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
+  if (req.method === 'GET' && url === '/course.js')
+    return fs.readFile(path.join(__dirname, 'public', 'course.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && (url === '/' || url === '/index.html'))
     return fs.readFile(path.join(__dirname, 'public', 'index.html'), (e, b) => e ? send(res, 500, { error: 'missing page' }) : send(res, 200, b, 'text/html; charset=utf-8'));
   send(res, 404, { error: 'not found' });
