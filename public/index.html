@@ -65,12 +65,13 @@ html[data-theme=night] #sheet{background:#111827;color:#f1f5f9}html[data-theme=n
 html[data-theme=night] #close{background:#374151;color:#f9fafb}html[data-theme=night] #askAbout{background:#1f2937;color:#e2e8f0}
 html[data-theme=night] #sPhoto figcaption{color:#94a3b8}
 html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[data-theme=night] #credits a{color:#9cf}
+#sFlag{margin:-6px 0 6px 36px;font-size:13px;opacity:.8}
 </style></head><body>
 <div id="map"></div>
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
-<div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2>
+<div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2><div id="sFlag" hidden></div>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
@@ -78,6 +79,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
 <script src="/sun.js"></script>
 <script src="/shiptype.js"></script>
+<script src="/mmsimid.js"></script>
 <script>
 const CENTER=[-97.30,27.78], ZOOM=10, FIT_MAX=12.5, FIT_PAD=48, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
 let here=null, lastSent=null;
@@ -97,8 +99,7 @@ function locate(){if(!navigator.geolocation)return;const ok=p=>{const first=!her
  navigator.geolocation.watchPosition(ok,()=>{},{enableHighAccuracy:false,timeout:30000,maximumAge:60000});
  setInterval(()=>sendView(true),30000)}
 const $=id=>document.getElementById(id);
-const TYPES={30:'Fishing',31:'Towing',32:'Towing',33:'Dredging',35:'Military',36:'Sailing',37:'Pleasure craft',50:'Pilot',51:'Search & rescue',52:'Tug',53:'Port tender',55:'Law enforcement',58:'Medical'};
-function typeName(t){if(t==null||t===0)return null;if(TYPES[t])return TYPES[t];const d=Math.floor(t/10);return {2:'Wing in ground',4:'High-speed craft',6:'Passenger',7:'Cargo',8:'Tanker',9:'Other'}[d]||('Type '+t)}
+function typeName(t){return ShipType.typeLabel(t)}
 const unk=v=>v==null||v===''?'<span class="unk">unknown</span>':String(v).replace(/[<>&]/g,'');
 let ships={}, selected=null, map, engine;
 // Day/night: viewer-local sunrise/sunset (falls back to CENTER until location is known). Markers are DOM markers, so setStyle keeps them.
@@ -134,7 +135,7 @@ function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(
  for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
   const im=k.el.querySelector('img'),u=ShipType.markerUrl(s.type);if(im&&im.getAttribute('src')!==u)im.setAttribute('src',u);k.el.classList.toggle('moored',s.sog!=null&&s.sog<0.5);k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
  if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta()}}
-function fillCard(s){$('sNameT').innerHTML=unk(s.name);const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
+function fillCard(s){$('sNameT').innerHTML=unk(s.name);const fl=MmsiMid.flagOf(s.mmsi),fe=$('sFlag');fe.hidden=!fl;fe.textContent=fl?(fl.flag+' '+fl.country).trim():'';fe.title=fl?'Flag from MMSI MID '+fl.mid:'';const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'');fillExtra(s)}
 const NAV=['Under way (engine)','At anchor','Not under command','Restricted maneuverability','Constrained by draught','Moored','Aground','Fishing','Under way (sailing)'];
 function aisExtra(s){const e=v=>String(v).replace(/[<>&]/g,''),p=[];if(s.callsign)p.push(e(s.callsign));if(s.imo)p.push('IMO '+e(s.imo));if(s.length&&s.beam)p.push(e(s.length)+'×'+e(s.beam)+' m');if(s.draught)p.push('draught '+e(s.draught)+' m');if(s.navStatus!=null&&NAV[s.navStatus])p.push(NAV[s.navStatus]);if(s.eta)p.push('ETA '+e(s.eta));return p.join(' · ')}
