@@ -130,12 +130,21 @@ function closeCard(){selected=null;$('sheet').classList.remove('open');render();
 $('close').onclick=closeCard;
 let demo=false; // explicit opt-in only; never auto-switched
 $('demoBtn').onclick=()=>{demo=!demo;fitted=false;if(demo&&map){map.setView?map.setView([CENTER[1],CENTER[0]],ZOOM):map.jumpTo({center:CENTER,zoom:ZOOM})}else center();poll()};
-async function poll(){if(document.hidden)return;try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4)+(demo?'&demo=1':''):'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});const d=await r.json();ships={};for(const s of d.ships)ships[s.mmsi]=s;
- const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}catch(e){$('badge').textContent='OFFLINE';$('badge').className='pill'}}
+let polling=false,pollT=null;
+function bboxQ(){try{const b=map&&map.getBounds&&map.getBounds();if(!b)return'';return'&bbox='+[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(x=>x.toFixed(4)).join(',')}catch{return''}}
+function schedule(){clearTimeout(pollT);if(!document.hidden)pollT=setTimeout(poll,POLL)}
+// Reconcile-in-place: render() updates/adds/removes markers by MMSI; a failed poll keeps the last markers.
+async function poll(){if(document.hidden||polling)return;polling=true;clearTimeout(pollT);
+ try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4)+(demo?'&demo=1':'')+bboxQ():'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});if(!r.ok)throw new Error(r.status);const d=await r.json();if(!d||!Array.isArray(d.ships))throw 0;
+ const next={};for(const s of d.ships)next[s.mmsi]=s;ships=next;
+ const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}
+ catch(e){const b=$('badge');b.textContent='Reconnecting…';b.className='pill'}
+ finally{polling=false;schedule()}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 (async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
- center();locate();poll();setInterval(poll,POLL);document.addEventListener('visibilitychange',poll)})();
+ center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
+ if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
 // ---- Ask Muse (typed). Location/heading go with the request only. ----
 let askMmsi=null, compass=null, compassAsked=false;
 function onOrient(e){const h=e.webkitCompassHeading??(e.absolute&&e.alpha!=null?(360-e.alpha)%360:null);if(h!=null)compass=Math.round(h)%360}

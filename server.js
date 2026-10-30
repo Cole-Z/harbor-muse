@@ -118,10 +118,17 @@ function stepReplay() {
 // ---------- mode + API ----------
 const RADIUS = 0.5;
 const near = (s, c, r) => Math.abs(s.lat - c.lat) <= r && Math.abs(s.lon - c.lon) <= r;
-function list(store, c, r, now) {
+const inBox = (s, b) => s.lat <= b.n && s.lat >= b.s && (b.w <= b.e ? s.lon >= b.w && s.lon <= b.e : s.lon >= b.w || s.lon <= b.e);
+// bbox=w,s,e,n (map view). Capped at 4° per side so one client can't dump the whole store.
+function parseBbox(v) {
+  if (!v) return null; const a = v.split(',').map(Number); if (a.length !== 4 || !a.every(Number.isFinite)) return null;
+  const [w, s, e, n] = a; if (!(n >= s && Math.abs(n) <= 90 && Math.abs(s) <= 90 && Math.abs(w) <= 180 && Math.abs(e) <= 180)) return null;
+  if (n - s > 4 || ((e - w + 360) % 360) > 4) return null; return { w, s, e, n };
+}
+function list(store, c, r, now, box = null) {
   const out = [];
   for (const s of store.values()) {
-    if (s.lat == null || (c && !near(s, c, r))) continue;
+    if (s.lat == null || (c && !near(s, c, r) && !(box && inBox(s, box)))) continue;
     const age = now - s.posAt;
     out.push({ mmsi: s.mmsi, name: s.name, type: s.type, lat: s.lat, lon: s.lon, sog: s.sog, cog: s.cog, hdg: s.hdg, dest: s.dest,
       ageSec: Math.round(age / 1000), stale: age > FADE_MS });
@@ -135,10 +142,12 @@ function mode() {
 // c = viewer location or null (no geolocation -> Corpus Christi demo home).
 // With a location we never auto-switch to Texas replay: live ships near you, or 'waiting' + an opt-in demo.
 // demo=true is the user's explicit tap on "Watch Corpus Christi demo (replay)".
-function ships(c, r = RADIUS, demo = false) {
+function ships(c, r = RADIUS, demo = false, box = null) {
   const now = Date.now(), asOf = new Date(now).toISOString();
   if (c && !demo) {
-    const live = KEY && now - lastLivePos < SPARSE_MS ? list(liveStore, c, r, now) : [];
+    // Don't gate on SPARSE_MS here: a quiet stream for 2 min used to return [] and wipe every marker while
+    // Muse (which reads the whole store) still saw them. Ships age out via sweep()/DROP_MS and carry stale.
+    const live = KEY ? list(liveStore, c, r, now, box) : [];
     if (live.length) return { mode: 'live', asOf, ships: live };
     return { mode: 'waiting', asOf, ships: [], note: 'No ships nearby right now', demoAvailable: replay.length > 0,
       detail: KEY ? 'Listening for live ships near you.' : 'Live ships near you need an aisstream key on the server.' };
@@ -190,7 +199,7 @@ const server = http.createServer((req, res) => {
     const q = u.searchParams, lat = parseFloat(q.get('lat')), lon = parseFloat(q.get('lon'));
     const rd = Math.min(Math.max(parseFloat(q.get('radiusDeg')) || RADIUS, 0.05), 2);
     const c = geo.validLoc(lat, lon) ? { lat, lon } : viewers.get(viewerId(req));
-    return send(res, 200, ships(c, rd, q.get('demo') === '1'));
+    return send(res, 200, ships(c, rd, q.get('demo') === '1', parseBbox(q.get('bbox'))));
   }
   if (req.method === 'POST' && url === '/view') {
     let body = '';
