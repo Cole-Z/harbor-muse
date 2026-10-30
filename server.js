@@ -248,8 +248,8 @@ const server = http.createServer((req, res) => {
       res.end(b);
     });
   }
-  const im = req.method === 'GET' && url.match(/^\/assets\/ship-types\/(cargo|tanker|tug|passenger|fishing|unknown)\.svg$/);
-  if (im) return fs.readFile(path.join(__dirname, 'public', 'assets', 'ship-types', im[1] + '.svg'), (e, b) => {
+  const im = req.method === 'GET' && url.match(/^\/assets\/(ship-types|markers)\/(cargo|tanker|tug|passenger|fishing|unknown)\.svg$/);
+  if (im) return fs.readFile(path.join(__dirname, 'public', 'assets', im[1], im[2] + '.svg'), (e, b) => {
     if (e) return send(res, 404, { error: 'not found' });
     res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' }); res.end(b);
   });
