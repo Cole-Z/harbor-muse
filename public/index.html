@@ -50,7 +50,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2>
-<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" loading="lazy"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><button id="askX" aria-label="Close" type="button">×</button><p id="askSel"></p>
 <form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form><div id="askOut" aria-live="polite"></div></div>
@@ -124,7 +124,7 @@ async function loadPhoto(s){const f=$('sPhoto'),im=$('sPhotoImg'),cap=$('sPhotoC
  try{const r=await fetch('/ship-photo?mmsi='+s.mmsi+'&name='+encodeURIComponent(s.name||'')+'&type='+(s.type||''));if(!r.ok||photoFor!==s.mmsi)return;const p=await r.json();if(!p||!p.url||photoFor!==s.mmsi)return;
   im.onerror=()=>{f.hidden=true};im.onload=()=>{if(photoFor===s.mmsi)f.hidden=false};im.alt=p.match==='name'?'Photo of '+(s.name||'vessel'):'Illustrative '+ShipType.shipKind(s.type)+' vessel';
   cap.textContent='';if(p.match==='name'&&/^https:\/\/commons\.wikimedia\.org\//.test(p.url)){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=p.attribution+(p.license?' · '+p.license:'');cap.appendChild(a)}else cap.textContent='Type photo (not this vessel)';
-  im.src=p.thumbUrl||p.url}catch{f.hidden=true}}
+  const src=p.thumbUrl||p.url;if(im.getAttribute('src')===src&&im.complete&&im.naturalWidth){f.hidden=false;return}im.src=src}catch{f.hidden=true}}
 function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);loadPhoto(ships[mmsi]);$('sheet').classList.add('open');render();loadTrail()}
 function closeCard(){selected=null;$('sheet').classList.remove('open');render();loadTrail()}
 $('close').onclick=closeCard;
