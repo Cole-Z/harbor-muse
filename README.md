@@ -13,7 +13,7 @@
 ## What it does (planned)
 
 - 🗺️ **Live map near you.** Your phone's location centers the map and tells the server which waters to watch (a ~25 nm box around you, anywhere in the US). Real-time positions come from the free [aisstream.io](https://aisstream.io/) AIS feed, on a [MapLibre GL](https://maplibre.org/) map with the keyless [OpenFreeMap](https://openfreemap.org/) Positron style (Leaflet + OpenStreetMap as fallback).
-- 💬 **Ask Muse.** Ask questions like *"What's that big ship heading into the port?"* Muse answers from a snapshot of the live ship data: name, type, speed, heading, and destination.
+- 💬 **Ask Muse.** Ask questions like *"What's that big ship heading into the port?"* Muse answers from a snapshot of the live ship data: name, type, speed, heading, and destination. If a ship card is open, follow-ups like *"tell me about it"* refer to that ship.
 - 📇 **Tap a ship** for name, type, speed, heading and destination ("unknown" when AIS doesn't say; AIS has no origin, so none is shown).
 - ⏪ **Replay demo.** If location is denied or unavailable, the map opens on Corpus Christi Bay (our beach demo home) and plays recorded real traffic when the live feed is quiet or no key is set. If you're located elsewhere and nothing live is near you yet, the badge says **WAITING** instead of jumping you to Texas.
 
@@ -40,9 +40,9 @@ Open `http://localhost:3000` (set `PORT` to change it). Geolocation needs a secu
 | `GET /ships?lat=&lon=&radiusDeg=&demo=1` | `{mode: "live"\|"replay"\|"waiting", asOf, ships: [{mmsi, name, type, lat, lon, sog, cog, hdg, dest, ageSec, stale}], note?}`, filtered to your area |
 | `POST /view` | `{lat, lon, accuracy?}` (US only); adds your area to the live subscription for 10 min |
 | `GET /health` | status of the feed and replay |
-| `POST /ask` | not wired up yet (returns 501) |
+| `POST /ask` | `{q, mmsi?, view?, lat?, lon?, heading?}` → `{answer, mmsi, confidence}`; when a ship card is open the client always sends that ship's `mmsi` |
 
-**Muse models.** Ask uses `muse-spark-1.3` (preferred, 5 attempts on intermittent 404 `model_not_found`), then falls back to `muse-spark-1.1` (5 attempts) with the same request body. No Contributor model is used. Only the fallback model name is logged.
+**Muse models.** Ask uses `muse-wonder-1.0` (preferred, 5 attempts on intermittent 404 `model_not_found`), then falls back to `muse-spark-1.3` and `muse-spark-1.1` (5 attempts each) with the same request body. No Contributor model is used. Only the fallback model name is logged.
 
 **Add to Home Screen (PWA).** Harbor Muse ships a web manifest and a small service worker, so it can be installed: iOS Safari → Share → Add to Home Screen; Android Chrome → menu → Install app. It opens full-screen. The service worker caches only the app shell (page, manifest, icons); map tiles, the map library CDN, and live ship data always go to the network and are never cached. Offline you get the shell, not the map. Installing needs HTTPS (or `localhost`).
 
@@ -52,7 +52,7 @@ Rebuild the replay file from recordings: `node tools/build-replay.js recording.j
 
 - [x] Live ships on the map (aisstream.io + MapLibre/OpenFreeMap)
 - [x] US-wide: map and feed follow your location
-- [ ] Ask Muse about ships from live data
+- [x] Ask Muse about ships from live data
 - [x] Replay mode with recorded feed data
 - [ ] Hosted live demo
 - [ ] 3-minute demo video
