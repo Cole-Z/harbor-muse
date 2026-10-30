@@ -32,8 +32,10 @@ test('server serves only the six icons as image/svg+xml', async () => {
     for (const n of NAMES) {
       const r = await fetch(base + '/assets/ship-types/' + n + '.svg');
       assert.strictEqual(r.status, 200); assert.strictEqual(r.headers.get('content-type'), 'image/svg+xml');
+      const m = await fetch(base + '/assets/markers/' + n + '.svg');
+      assert.strictEqual(m.status, 200); assert.strictEqual(m.headers.get('content-type'), 'image/svg+xml');
     }
-    for (const bad of ['/assets/ship-types/yacht.svg', '/assets/ship-types/../../server.js', '/assets/ship-types/%2e%2e%2fserver.js'])
+    for (const bad of ['/assets/ship-types/yacht.svg', '/assets/ship-types/../../server.js', '/assets/ship-types/%2e%2e%2fserver.js', '/assets/markers/yacht.svg', '/assets/markers/../../server.js'])
       assert.strictEqual((await fetch(base + bad)).status, 404, bad);
     assert.strictEqual((await fetch(base + '/shiptype.js')).status, 200);
     const html = await (await fetch(base + '/')).text();

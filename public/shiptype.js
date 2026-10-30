@@ -8,6 +8,7 @@
     if(t===30)return 'fishing';return 'unknown'; // pleasure/sailing/military/other
   }
   const iconUrl=(t)=>'/assets/ship-types/'+shipKind(t)+'.svg';
-  const api={NAMES,shipKind,iconUrl};
+  const markerUrl=(t)=>'/assets/markers/'+shipKind(t)+'.svg';
+  const api={NAMES,shipKind,iconUrl,markerUrl};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ShipType=api;
 })(this);
