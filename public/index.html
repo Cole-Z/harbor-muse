@@ -31,6 +31,17 @@
 #askSel{font-size:13px;color:#555;margin:0 0 6px}#askOut{margin-top:10px;font-size:15px}#askOut .conf{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;margin-left:6px;background:#eee}
 #askOut .conf.high{background:#dcfce7}#askOut .conf.low{background:#fef3c7}#askOut .err{color:#b91c1c}#askX{float:right;border:0;background:#eee;border-radius:50%;width:32px;height:32px}
 #askAbout{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#eef2f5;color:#124;font-weight:700}
+#askPanel{max-height:75vh;overflow-y:auto}#askSel{font-size:15px;color:#333;font-weight:600}
+#askOut{font-size:18px;line-height:1.5;color:#0b1220}#askOut:empty{display:none}
+#askOut .ans{margin:0;background:#f1f5f9;color:#0b1220;border:1px solid #cbd5e1;border-radius:16px 16px 16px 4px;padding:14px 16px;font-size:19px;line-height:1.5;word-wrap:break-word}
+#askOut .conf{display:block;width:max-content;margin:8px 0 0;font-size:14px;font-weight:600;color:#0b1220;padding:3px 10px}
+#askOut .err{display:block;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:12px 14px;font-size:17px;font-weight:600}
+#askShow{background:#1d4ed8;color:#fff;font-weight:700;font-size:16px}
+html[data-theme=night] #askPanel{background:#111827;color:#f1f5f9}html[data-theme=night] #askSel{color:#cbd5e1}
+html[data-theme=night] #askQ{background:#1f2937;color:#f9fafb;border-color:#4b5563}html[data-theme=night] #askX{background:#374151;color:#f9fafb}
+html[data-theme=night] #askOut{color:#f9fafb}html[data-theme=night] #askOut .ans{background:#1e293b;color:#f9fafb;border-color:#475569}
+html[data-theme=night] #askOut .conf{background:#334155;color:#f1f5f9}html[data-theme=night] #askOut .conf.high{background:#14532d}html[data-theme=night] #askOut .conf.low{background:#78350f}
+html[data-theme=night] #askOut .err{background:#450a0a;border-color:#991b1b;color:#fecaca}
 html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[data-theme=night] #credits a{color:#9cf}
 </style></head><body>
 <div id="map"></div>
@@ -131,7 +142,7 @@ function viewBox(){try{if(map.getBounds){const b=map.getBounds();return{n:b.getN
 $('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim();if(!q)return;const out=$('askOut'),go=$('askGo');go.disabled=true;out.textContent='Thinking…';
  const body={q};if(askMmsi)body.mmsi=+askMmsi;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
  try{const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok){out.innerHTML='';const p=document.createElement('p');p.style.margin='0';p.textContent=d.answer;const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';p.appendChild(c);out.appendChild(p);
+  if(r.ok){out.innerHTML='';const p=document.createElement('p');p.className='ans';p.textContent=d.answer;const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';p.appendChild(c);out.appendChild(p);
    if(d.mmsi&&ships[d.mmsi]){const b=document.createElement('button');b.type='button';b.id='askShow';b.textContent='Show ship';b.style.cssText='margin-top:8px;border:0;border-radius:999px;padding:8px 12px';b.onclick=()=>{$('askPanel').classList.remove('open');openCard(d.mmsi)};out.appendChild(b)}}
   else{const msg=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Ask is not set up on this server yet.':r.status===502?(d.error||'Muse had a problem. Try again.'):(d.error||'Could not ask right now.');
    out.innerHTML='<span class="err"></span>';out.firstChild.textContent=msg}}
