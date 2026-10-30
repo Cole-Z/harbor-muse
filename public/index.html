@@ -26,23 +26,43 @@
 .ship svg{filter:drop-shadow(0 1px 1px #0006)}.ship.stale{opacity:.35}
 .ship.sel svg path{fill:#d00}
 #askBtn{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom) + 34px);z-index:5;border:0;border-radius:999px;padding:12px 18px;background:#1d4ed8;color:#fff;font-weight:700;box-shadow:0 2px 8px #0004}
-#askPanel{position:fixed;left:0;right:0;bottom:0;z-index:7;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -4px 18px #0004;padding:14px 16px calc(env(safe-area-inset-bottom) + 14px);display:none}
-#askPanel.open{display:block}#askForm{display:flex;gap:8px}#askQ{flex:1;font-size:16px;padding:10px 12px;border:1px solid #ccc;border-radius:10px}
+body.ask-open #askBtn,body.card-open #askBtn{display:none}
+#askPanel{position:fixed;z-index:7;background:#fff;display:none;flex-direction:column;min-height:0;color:#0b1220}
+#askPanel.open{display:flex}
+#askHead{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:8px}
+#askSel{flex:1;margin:0;font-size:15px;color:#333;font-weight:600}
+#askX{border:0;background:#eee;border-radius:50%;width:32px;height:32px;flex-shrink:0}
+#askLog{flex:1;overflow-y:auto;min-height:64px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+#askLog:empty{display:none}
+#askLog .me{align-self:flex-end;max-width:92%;background:#1d4ed8;color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:16px;line-height:1.4;word-wrap:break-word}
+#askLog .ans{align-self:flex-start;max-width:92%;margin:0;background:#f1f5f9;color:#0b1220;border:1px solid #cbd5e1;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:17px;line-height:1.5;word-wrap:break-word}
+#askLog .wait{opacity:.7}
+#askLog .conf{display:block;width:max-content;margin:8px 0 0;font-size:13px;font-weight:600;color:#0b1220;padding:3px 10px;border-radius:999px;background:#eee}
+#askLog .conf.high{background:#dcfce7}#askLog .conf.low{background:#fef3c7}
+#askLog .err{align-self:flex-start;max-width:92%;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:600;color:#b91c1c}
+#askLog .askShow{background:#1d4ed8;color:#fff;font-weight:700;font-size:15px;margin-top:8px;border:0;border-radius:999px;padding:8px 12px}
+#askForm{display:flex;gap:8px;flex-shrink:0;margin-top:auto;padding-top:10px;background:#fff}
+#askQ{flex:1;font-size:16px;padding:10px 12px;border:1px solid #ccc;border-radius:10px;min-width:0}
 #askForm button{border:0;border-radius:10px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#askForm button:disabled{opacity:.5}
-#askSel{font-size:13px;color:#555;margin:0 0 6px}#askOut{margin-top:10px;font-size:15px}#askOut .conf{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;margin-left:6px;background:#eee}
-#askOut .conf.high{background:#dcfce7}#askOut .conf.low{background:#fef3c7}#askOut .err{color:#b91c1c}#askX{float:right;border:0;background:#eee;border-radius:50%;width:32px;height:32px}
 #askAbout{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#eef2f5;color:#124;font-weight:700}
-#askPanel{max-height:75vh;overflow-y:auto}#askSel{font-size:15px;color:#333;font-weight:600}
-#askOut{font-size:18px;line-height:1.5;color:#0b1220}#askOut:empty{display:none}
-#askOut .ans{margin:0;background:#f1f5f9;color:#0b1220;border:1px solid #cbd5e1;border-radius:16px 16px 16px 4px;padding:14px 16px;font-size:19px;line-height:1.5;word-wrap:break-word}
-#askOut .conf{display:block;width:max-content;margin:8px 0 0;font-size:14px;font-weight:600;color:#0b1220;padding:3px 10px}
-#askOut .err{display:block;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:12px 14px;font-size:17px;font-weight:600}
-#askShow{background:#1d4ed8;color:#fff;font-weight:700;font-size:16px}
+@media (max-width:699px){
+  #askPanel.open{left:8px;right:8px;top:calc(env(safe-area-inset-top) + 56px);height:min(48vh,420px);border-radius:16px;box-shadow:0 8px 28px #0004;padding:12px}
+  body.card-open #askPanel.open{bottom:calc(var(--sheet-h, 35vh) + 8px);height:auto}
+}
+@media (min-width:700px){
+  #askPanel.open{top:0;right:0;bottom:0;width:min(400px,42vw);border-radius:0;box-shadow:-4px 0 18px #0003;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
+  body.ask-open #map,body.ask-open #credits,body.ask-open #sheet,body.ask-open #note{right:min(400px,42vw)}
+  body.ask-open #top{right:calc(min(400px,42vw) + 10px)}
+}
 html[data-theme=night] #askPanel{background:#111827;color:#f1f5f9}html[data-theme=night] #askSel{color:#cbd5e1}
 html[data-theme=night] #askQ{background:#1f2937;color:#f9fafb;border-color:#4b5563}html[data-theme=night] #askX{background:#374151;color:#f9fafb}
-html[data-theme=night] #askOut{color:#f9fafb}html[data-theme=night] #askOut .ans{background:#1e293b;color:#f9fafb;border-color:#475569}
-html[data-theme=night] #askOut .conf{background:#334155;color:#f1f5f9}html[data-theme=night] #askOut .conf.high{background:#14532d}html[data-theme=night] #askOut .conf.low{background:#78350f}
-html[data-theme=night] #askOut .err{background:#450a0a;border-color:#991b1b;color:#fecaca}
+html[data-theme=night] #askForm{background:#111827}
+html[data-theme=night] #askLog .ans{background:#1e293b;color:#f9fafb;border-color:#475569}
+html[data-theme=night] #askLog .conf{background:#334155;color:#f1f5f9}html[data-theme=night] #askLog .conf.high{background:#14532d}html[data-theme=night] #askLog .conf.low{background:#78350f}
+html[data-theme=night] #askLog .err{background:#450a0a;border-color:#991b1b;color:#fecaca}
+html[data-theme=night] #sheet{background:#111827;color:#f1f5f9}html[data-theme=night] #sheet dt{color:#94a3b8}
+html[data-theme=night] #close{background:#374151;color:#f9fafb}html[data-theme=night] #askAbout{background:#1f2937;color:#e2e8f0}
+html[data-theme=night] #sPhoto figcaption{color:#94a3b8}
 html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[data-theme=night] #credits a{color:#9cf}
 </style></head><body>
 <div id="map"></div>
@@ -52,8 +72,9 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
-<div id="askPanel" role="dialog" aria-label="Ask Muse"><button id="askX" aria-label="Close" type="button">×</button><p id="askSel"></p>
-<form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form><div id="askOut" aria-live="polite"></div></div>
+<div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
+<div id="askLog" aria-live="polite"></div>
+<form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
 <script src="/sun.js"></script>
 <script src="/shiptype.js"></script>
 <script>
@@ -111,7 +132,7 @@ function initLeaflet(){return new Promise(r=>{const c=document.createElement('li
 function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(k);markers.delete(mmsi)}
  for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
   k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
- if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail()}}
+ if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta()}}
 function fillCard(s){$('sNameT').innerHTML=unk(s.name);const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'')}
 let trailFor=null;
@@ -122,11 +143,11 @@ async function loadTrail(){const id=selected;if(!engine||!engine.trail)return;if
 let photoFor=null;
 async function loadPhoto(s){const f=$('sPhoto'),im=$('sPhotoImg'),cap=$('sPhotoCap');f.hidden=true;photoFor=s.mmsi;
  try{const r=await fetch('/ship-photo?mmsi='+s.mmsi+'&name='+encodeURIComponent(s.name||'')+'&type='+(s.type||''));if(!r.ok||photoFor!==s.mmsi)return;const p=await r.json();if(!p||!p.url||photoFor!==s.mmsi)return;
-  im.onerror=()=>{f.hidden=true};im.onload=()=>{if(photoFor===s.mmsi)f.hidden=false};im.alt=p.match==='name'?'Photo of '+(s.name||'vessel'):'Illustrative '+ShipType.shipKind(s.type)+' vessel';
+  im.onerror=()=>{f.hidden=true;layoutAsk()};im.onload=()=>{if(photoFor===s.mmsi){f.hidden=false;layoutAsk()}};im.alt=p.match==='name'?'Photo of '+(s.name||'vessel'):'Illustrative '+ShipType.shipKind(s.type)+' vessel';
   cap.textContent='';if(p.match==='name'&&/^https:\/\/commons\.wikimedia\.org\//.test(p.url)){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=p.attribution+(p.license?' · '+p.license:'');cap.appendChild(a)}else cap.textContent='Type photo (not this vessel)';
-  const src=p.thumbUrl||p.url;if(im.getAttribute('src')===src&&im.complete&&im.naturalWidth){f.hidden=false;return}im.src=src}catch{f.hidden=true}}
-function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);loadPhoto(ships[mmsi]);$('sheet').classList.add('open');render();loadTrail()}
-function closeCard(){selected=null;$('sheet').classList.remove('open');render();loadTrail()}
+  const src=p.thumbUrl||p.url;if(im.getAttribute('src')===src&&im.complete&&im.naturalWidth){f.hidden=false;layoutAsk();return}im.src=src}catch{f.hidden=true;layoutAsk()}}
+function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);loadPhoto(ships[mmsi]);$('sheet').classList.add('open');document.body.classList.add('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
+function closeCard(){selected=null;$('sheet').classList.remove('open');document.body.classList.remove('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
 $('close').onclick=closeCard;
 let demo=false; // explicit opt-in only; never auto-switched
 $('demoBtn').onclick=()=>{demo=!demo;fitted=false;if(demo&&map){map.setView?map.setView([CENTER[1],CENTER[0]],ZOOM):map.jumpTo({center:CENTER,zoom:ZOOM})}else center();poll()};
@@ -151,17 +172,26 @@ function onOrient(e){const h=e.webkitCompassHeading??(e.absolute&&e.alpha!=null?
 function startCompass(){if(compassAsked)return;compassAsked=true;try{const D=window.DeviceOrientationEvent;if(!D)return;
  if(typeof D.requestPermission==='function')D.requestPermission().then(p=>{if(p==='granted')addEventListener('deviceorientation',onOrient)}).catch(()=>{});
  else{addEventListener('deviceorientationabsolute',onOrient);addEventListener('deviceorientation',onOrient)}}catch{}}
-function openAsk(mmsi){startCompass();askMmsi=mmsi||null;const s=askMmsi&&ships[askMmsi];$('askSel').textContent=askMmsi?'About: '+(s&&s.name||('MMSI '+askMmsi)):'Ask about ships on the map';
- $('askOut').innerHTML='';$('askPanel').classList.add('open');if(askMmsi&&!$('askQ').value)$('askQ').value="What's this ship doing?";$('askQ').focus()}
-$('askBtn').onclick=()=>openAsk(null);$('askAbout').onclick=()=>openAsk(selected);$('askX').onclick=()=>$('askPanel').classList.remove('open');
+function resizeMap(){try{if(!map)return;if(map.resize)map.resize();else if(map.invalidateSize)map.invalidateSize()}catch{}}
+function layoutAsk(){const h=document.body.classList.contains('card-open')?$('sheet').offsetHeight:0;document.body.style.setProperty('--sheet-h',h+'px');resizeMap()}
+function askId(){return selected||askMmsi||null}
+function syncAskMeta(){const id=askId(),s=id&&ships[id];$('askSel').textContent=id?'About: '+(s&&s.name||('MMSI '+id)):'Ask about ships on the map';
+ $('askQ').placeholder=s&&s.name?('Ask about '+s.name+'…'):id?'Ask about this ship…':"What's that ship?"}
+function openAsk(mmsi){startCompass();askMmsi=mmsi||selected||null;syncAskMeta();document.body.classList.add('ask-open');$('askPanel').classList.add('open');layoutAsk();$('askQ').focus()}
+function closeAsk(){document.body.classList.remove('ask-open');$('askPanel').classList.remove('open');layoutAsk()}
+$('askBtn').onclick=()=>openAsk(selected);$('askAbout').onclick=()=>openAsk(selected);$('askX').onclick=closeAsk;
+addEventListener('resize',layoutAsk);
 function viewBox(){try{if(map.getBounds){const b=map.getBounds();return{n:b.getNorth(),s:b.getSouth(),e:b.getEast(),w:b.getWest()}}}catch{}return undefined}
-$('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim();if(!q)return;const out=$('askOut'),go=$('askGo');go.disabled=true;out.textContent='Thinking…';
- const body={q};if(askMmsi)body.mmsi=+askMmsi;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
+function askBubble(cls,text){const n=document.createElement('div');n.className=cls;if(text!=null)n.textContent=text;$('askLog').appendChild(n);n.scrollIntoView({block:'end'});return n}
+$('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim();if(!q)return;const go=$('askGo');go.disabled=true;
+ const id=askId();syncAskMeta();askBubble('me',q);$('askQ').value='';const think=askBubble('ans wait','Thinking…');
+ const body={q};if(id)body.mmsi=+id;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
  try{const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok){out.innerHTML='';const p=document.createElement('p');p.className='ans';p.textContent=d.answer;const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';p.appendChild(c);out.appendChild(p);
-   if(d.mmsi&&ships[d.mmsi]){const b=document.createElement('button');b.type='button';b.id='askShow';b.textContent='Show ship';b.style.cssText='margin-top:8px;border:0;border-radius:999px;padding:8px 12px';b.onclick=()=>{$('askPanel').classList.remove('open');openCard(d.mmsi)};out.appendChild(b)}}
+  if(r.ok){think.classList.remove('wait');think.textContent=d.answer;const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
+   if(d.mmsi&&ships[d.mmsi]&&d.mmsi!==selected){const b=document.createElement('button');b.type='button';b.className='askShow';b.textContent='Show ship';b.onclick=()=>openCard(d.mmsi);think.appendChild(b)}
+   think.scrollIntoView({block:'end'})}
   else{const msg=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Ask is not set up on this server yet.':r.status===502?(d.error||'Muse had a problem. Try again.'):(d.error||'Could not ask right now.');
-   out.innerHTML='<span class="err"></span>';out.firstChild.textContent=msg}}
- catch{out.innerHTML='<span class="err">Offline — could not reach Harbor Muse.</span>'}finally{go.disabled=false}};
+   think.className='err';think.textContent=msg}}
+ catch{think.className='err';think.textContent='Offline — could not reach Harbor Muse.'}finally{go.disabled=false}};
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script></body></html>
