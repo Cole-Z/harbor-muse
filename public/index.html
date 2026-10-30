@@ -25,6 +25,12 @@
 .ship{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .ship img{width:20px;height:20px;filter:drop-shadow(0 1px 1.5px #000a);transition:width .15s,height .15s;pointer-events:none}
 .ship.moored img{opacity:.6}.ship.stale img{opacity:.35}
+.ship.cone img{border-radius:50%;box-shadow:0 0 0 2px #22d3ee,0 0 6px #22d3ee}
+#lookBtn{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:5;width:44px;height:44px;border:0;border-radius:50%;background:#fff;color:#124;box-shadow:0 2px 8px #0004;display:flex;align-items:center;justify-content:center;padding:0}
+#lookBtn[aria-pressed=true]{background:#0e7490;color:#fff}
+[data-theme=night] #lookBtn[aria-pressed=false]{background:#1f2937;color:#e5e7eb}
+body.ask-open #lookBtn,body.card-open #lookBtn{display:none}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 150px);transform:translateX(-50%);z-index:9;background:#111c;color:#fff;padding:8px 14px;border-radius:999px;font-size:14px;display:none}
 .ship.sel img{width:28px;height:28px;border-radius:50%;box-shadow:0 0 0 3px #f97316,0 0 8px #f97316}
 #askBtn{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom) + 34px);z-index:5;border:0;border-radius:999px;padding:12px 18px;background:#1d4ed8;color:#fff;font-weight:700;box-shadow:0 2px 8px #0004}
 body.ask-open #askBtn,body.card-open #askBtn{display:none}
@@ -75,6 +81,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2><div id="sFlag" hidden></div>
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Tell me more</button><button id="askAbout" type="button">Ask Muse about this</button></div>
+<button id="lookBtn" type="button" aria-pressed="false" aria-label="Looking at" title="Looking at"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor"/></svg></button><div id="toast" role="status"></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
@@ -82,6 +89,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <script src="/sun.js"></script>
 <script src="/shiptype.js"></script>
 <script src="/mmsimid.js"></script>
+<script src="/cone.js"></script>
 <script>
 const CENTER=[-97.30,27.78], ZOOM=10, FIT_MAX=12.5, FIT_PAD=48, POLL=5000; // CENTER = Corpus Christi demo home, used only without geolocation
 let here=null, lastSent=null;
@@ -135,7 +143,7 @@ function initLeaflet(){return new Promise(r=>{const c=document.createElement('li
  trail(pts){const ll=pts.map(p=>[p.lat,p.lon]);if(this.line)this.line.setLatLngs(ll);else this.line=L.polyline(ll,{color:'#d00',weight:2,opacity:.7,interactive:false}).addTo(map)}};r()};document.head.appendChild(s)})}
 function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(k);markers.delete(mmsi)}
  for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
-  const im=k.el.querySelector('img'),u=ShipType.markerUrl(s.type);if(im&&im.getAttribute('src')!==u)im.setAttribute('src',u);k.el.classList.toggle('moored',s.sog!=null&&s.sog<0.5);k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
+  const im=k.el.querySelector('img'),u=ShipType.markerUrl(s.type);if(im&&im.getAttribute('src')!==u)im.setAttribute('src',u);k.el.classList.toggle('moored',s.sog!=null&&s.sog<0.5);k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected);k.el.classList.toggle('cone',s.mmsi!==selected&&lookInCone(s))}
  if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta();syncTellMore()}}
 function fillCard(s){$('sNameT').innerHTML=unk(s.name);const fl=MmsiMid.flagOf(s.mmsi),fe=$('sFlag');fe.hidden=!fl;fe.textContent=fl?(fl.flag+' '+fl.country).trim():'';fe.title=fl?'Flag from MMSI MID '+fl.mid:'';const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'');fillExtra(s)}
@@ -170,17 +178,42 @@ async function poll(){if(document.hidden||polling)return;polling=true;clearTimeo
  finally{polling=false;schedule()}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
-(async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
- center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
- if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
 // ---- Ask Muse (typed). Location/heading go with the request only. ----
 let askMmsi=null, compass=null, compassAsked=false;
-function onOrient(e){const h=e.webkitCompassHeading??(e.absolute&&e.alpha!=null?(360-e.alpha)%360:null);if(h!=null)compass=Math.round(h)%360}
+function onOrient(e){const h=e.webkitCompassHeading??(e.absolute&&e.alpha!=null?(360-e.alpha)%360:null);if(h!=null){compass=Math.round(h)%360;compassAt=Date.now();onHeading()}}
 function startCompass(){if(compassAsked)return;compassAsked=true;try{const D=window.DeviceOrientationEvent;if(!D)return;
  if(typeof D.requestPermission==='function')D.requestPermission().then(p=>{if(p==='granted')addEventListener('deviceorientation',onOrient)}).catch(()=>{});
  else{addEventListener('deviceorientationabsolute',onOrient);addEventListener('deviceorientation',onOrient)}}catch{}}
 function resizeMap(){try{if(!map)return;if(map.resize)map.resize();else if(map.invalidateSize)map.invalidateSize()}catch{}}
 function layoutAsk(){const h=document.body.classList.contains('card-open')?$('sheet').offsetHeight:0;document.body.style.setProperty('--sheet-h',h+'px');resizeMap()}
+// ---- W2 "Looking at" wedge. Client-only; same cone as /ask ranking (Cone.HALF_DEG / Cone.RANGE_NM). ----
+let lookOn=false, compassAt=0, lookShown=false;
+function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',3500)}
+function lookOrigin(){if(here)return here;if(!map)return null;const c=map.getCenter();return{lat:c.lat,lon:c.lng}}
+function lookLive(){return lookOn&&compass!=null&&Date.now()-compassAt<=Cone.STALE_MS}
+function lookInCone(s){return lookLive()&&Cone.inCone(lookOrigin(),compass,s)}
+function requestHeading(){return new Promise(res=>{const D=window.DeviceOrientationEvent;if(!D)return res(false);compassAsked=true;
+ const listen=()=>{addEventListener('deviceorientationabsolute',onOrient);addEventListener('deviceorientation',onOrient)};
+ if(typeof D.requestPermission==='function')D.requestPermission().then(p=>{if(p==='granted'){listen();res(true)}else res(false)}).catch(()=>res(false));
+ else{listen();if(compass!=null&&Date.now()-compassAt<2000)return res(true);const t0=Date.now(),iv=setInterval(()=>{if(compassAt>t0){clearInterval(iv);res(true)}else if(Date.now()-t0>3000){clearInterval(iv);res(false)}},100)}})}
+function drawWedge(){const live=lookLive(),o=live&&lookOrigin();const ring=o?Cone.wedge(o,compass):null;lookShown=!!ring;if(!map)return;
+ if(window.L&&map instanceof L.Map){if(!ring){if(drawWedge.poly){drawWedge.poly.remove();drawWedge.poly=null}return}
+  const ll=ring.map(p=>[p[1],p[0]]);if(drawWedge.poly)drawWedge.poly.setLatLngs(ll);else drawWedge.poly=L.polygon(ll,{color:'#22d3ee',weight:1,opacity:.6,fillColor:'#22d3ee',fillOpacity:.14,interactive:false}).addTo(map);return}
+ if(!map.isStyleLoaded())return;const data={type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[ring||[]]}};const src=map.getSource('cone');
+ if(src)src.setData(ring?data:{type:'FeatureCollection',features:[]});else if(ring){map.addSource('cone',{type:'geojson',data});
+  map.addLayer({id:'cone-fill',type:'fill',source:'cone',paint:{'fill-color':'#22d3ee','fill-opacity':.14}});
+  map.addLayer({id:'cone-line',type:'line',source:'cone',paint:{'line-color':'#22d3ee','line-width':1,'line-opacity':.6}})}}
+function lookUpdate(){drawWedge();for(const [mmsi,k] of markers){const s=ships[mmsi];if(s)k.el.classList.toggle('cone',mmsi!==selected&&lookInCone(s))}}
+const onHeading=window.Cone?Cone.throttle(()=>{if(lookOn)lookUpdate()},Cone.THROTTLE_MS):()=>{};
+function setLook(on){lookOn=on;$('lookBtn').setAttribute('aria-pressed',String(on));lookUpdate()}
+$('lookBtn').onclick=async()=>{if(lookOn)return setLook(false);const ok=await requestHeading();if(!ok){toast('Compass heading not available — Looking at stays off');return setLook(false)}setLook(true)};
+// staleness (>5 s without heading), user location / map moves, MapLibre style swaps
+setInterval(()=>{if(lookOn&&lookShown!==lookLive())lookUpdate()},1000);
+let lookHere=null;setInterval(()=>{if(lookOn&&here&&here!==lookHere){lookHere=here;lookUpdate()}},1000);
+(async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
+ if(map&&map.on){map.on('moveend',()=>{if(lookOn&&!here)lookUpdate()});if(!(window.L&&map instanceof L.Map))map.on('styledata',()=>{if(lookOn&&!map.getSource('cone'))drawWedge()})}
+ center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
+ if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
 function askId(){return selected||askMmsi||null}
 function syncAskMeta(){const id=askId(),s=id&&ships[id];$('askSel').textContent=id?'About: '+(s&&s.name||('MMSI '+id)):'Ask about ships on the map';
  $('askQ').placeholder=s&&s.name?('Ask about '+s.name+'…'):id?'Ask about this ship…':"What's that ship?"}

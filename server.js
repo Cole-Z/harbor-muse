@@ -295,6 +295,8 @@ const server = http.createServer((req, res) => {
     return fs.readFile(path.join(__dirname, 'public', 'shiptype.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/mmsimid.js')
     return fs.readFile(path.join(__dirname, 'public', 'mmsimid.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
+  if (req.method === 'GET' && url === '/cone.js')
+    return fs.readFile(path.join(__dirname, 'public', 'cone.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/sun.js')
     return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && (url === '/' || url === '/index.html'))
