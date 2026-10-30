@@ -19,7 +19,7 @@
 #sheet.open{transform:none}
 #sheet h2{margin:4px 40px 10px 0;font-size:22px}
 #sPhoto{margin:8px 0 4px}#sPhoto[hidden]{display:none!important}#sPhoto img{display:block;width:100%;height:72px;object-fit:cover;border-radius:10px;background:#dde5ec}#sPhoto figcaption{font-size:11px;line-height:1.3;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(min-width:768px){#sPhoto img{height:96px}}#sPhoto a{color:inherit}
-#sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}
+#sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}#sExtra{margin:8px 0 0;font-size:13px;color:#555;line-height:1.4}
 #close{position:absolute;right:10px;top:8px;width:44px;height:44px;border:0;background:#eee;border-radius:50%;font-size:22px}
 .unk{color:#888;font-weight:400}
 .ship{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -71,7 +71,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2>
-<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
@@ -135,7 +135,10 @@ function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(
   const im=k.el.querySelector('img'),u=ShipType.markerUrl(s.type);if(im&&im.getAttribute('src')!==u)im.setAttribute('src',u);k.el.classList.toggle('moored',s.sog!=null&&s.sog<0.5);k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
  if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta()}}
 function fillCard(s){$('sNameT').innerHTML=unk(s.name);const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
- $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'')}
+ $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'');fillExtra(s)}
+const NAV=['Under way (engine)','At anchor','Not under command','Restricted maneuverability','Constrained by draught','Moored','Aground','Fishing','Under way (sailing)'];
+function aisExtra(s){const e=v=>String(v).replace(/[<>&]/g,''),p=[];if(s.callsign)p.push(e(s.callsign));if(s.imo)p.push('IMO '+e(s.imo));if(s.length&&s.beam)p.push(e(s.length)+'×'+e(s.beam)+' m');if(s.draught)p.push('draught '+e(s.draught)+' m');if(s.navStatus!=null&&NAV[s.navStatus])p.push(NAV[s.navStatus]);if(s.eta)p.push('ETA '+e(s.eta));return p.join(' · ')}
+function fillExtra(s){const x=$('sExtra'),t=aisExtra(s);x.textContent=t;x.hidden=!t}
 let trailFor=null;
 async function loadTrail(){const id=selected;if(!engine||!engine.trail)return;if(!id){trailFor=null;engine.trail([]);return}
  try{const r=await fetch('/ships/'+id+'/trail',{cache:'no-store'});const pts=r.ok?await r.json():[];if(selected!==id)return;

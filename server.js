@@ -35,7 +35,19 @@ function ingest(store, msg, now) {
   if (t === 'ShipStaticData' || t === 'StaticDataReport') {
     s.name = clean(m.Name) || s.name || clean(md.ShipName);
     if (m.Type) s.type = m.Type;
-    if (t === 'ShipStaticData') s.dest = clean(m.Destination);
+    if (t === 'ShipStaticData') {
+      s.dest = clean(m.Destination);
+      s.callsign = clean(m.CallSign) || s.callsign || null;
+      if (m.ImoNumber > 0) s.imo = m.ImoNumber;
+      if (m.MaximumStaticDraught > 0) s.draught = m.MaximumStaticDraught;
+      const e = m.Eta || {};
+      s.eta = e.Month >= 1 && e.Month <= 12 && e.Day >= 1 && e.Day <= 31 && e.Hour < 24 && e.Minute < 60
+        ? `${String(e.Month).padStart(2, '0')}-${String(e.Day).padStart(2, '0')} ${String(e.Hour).padStart(2, '0')}:${String(e.Minute).padStart(2, '0')} UTC` : null;
+    }
+    const rb = m.ReportB || {};
+    if (t === 'StaticDataReport' && rb.Valid) s.callsign = clean(rb.CallSign) || s.callsign || null;
+    const d = m.Dimension || rb.Dimension;
+    if (d) { const L = (d.A || 0) + (d.B || 0), W = (d.C || 0) + (d.D || 0); if (L > 0 && W > 0) { s.length = L; s.beam = W; } }
     s.staticAt = now;
   } else if (/PositionReport$/.test(t)) {
     if (!(m.Latitude <= 91 && m.Longitude <= 181)) return false;
@@ -43,6 +55,7 @@ function ingest(store, msg, now) {
     s.sog = m.Sog >= 102.2 ? null : m.Sog;
     s.cog = m.Cog >= 360 ? null : m.Cog;
     s.hdg = m.TrueHeading === 511 ? null : m.TrueHeading;
+    if (m.NavigationalStatus >= 0 && m.NavigationalStatus <= 14 && m.NavigationalStatus !== 15) s.navStatus = m.NavigationalStatus;
     if (m.Name) s.name = clean(m.Name) || s.name;           // ExtendedClassB carries name/type
     if (m.Type) s.type = m.Type;
     if (!s.name) s.name = clean(md.ShipName);
@@ -131,6 +144,8 @@ function list(store, c, r, now, box = null) {
     if (s.lat == null || (c && !near(s, c, r) && !(box && inBox(s, box)))) continue;
     const age = now - s.posAt;
     out.push({ mmsi: s.mmsi, name: s.name, type: s.type, lat: s.lat, lon: s.lon, sog: s.sog, cog: s.cog, hdg: s.hdg, dest: s.dest,
+      callsign: s.callsign || null, imo: s.imo || null, navStatus: s.navStatus ?? null, draught: s.draught || null,
+      length: s.length || null, beam: s.beam || null, eta: s.eta || null,
       ageSec: Math.round(age / 1000), stale: age > FADE_MS });
   }
   return out;
