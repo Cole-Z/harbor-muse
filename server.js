@@ -6,7 +6,11 @@ const WebSocket = require('ws');
 const geo = require('./lib/geo');
 const trail = require('./lib/trail');
 const ask = require('./lib/ask');
+const shipPhoto = require('./lib/shipPhoto');
+const ShipType = require('./public/shiptype');
 const askLimiter = ask.makeLimiter(10, 10 * 60e3);
+const photoLimiter = ask.makeLimiter(30, 60e3);
+const lookupPhoto = shipPhoto.makeShipPhoto();
 
 const PORT = +process.env.PORT || 3000;
 const KEY = process.env.AISSTREAM_API_KEY || '';
@@ -208,6 +212,18 @@ const server = http.createServer((req, res) => {
     return send(res, 200, trailOf(s, Date.now()));
   }
   if (req.method === 'GET' && url === '/health') return send(res, 200, { ok: true, mode: mode(), live: liveState, liveShips: liveStore.size, viewers: viewers.size(), boxes: currentBoxes().length, bboxFallback, replayShips: replayStore.size, replayFrames: replay.length });
+  if (req.method === 'GET' && url === '/ship-photo') { // Commons named match, else type photo; name/mmsi never logged
+    const q = u.searchParams, id = +q.get('mmsi'), s = Number.isInteger(id) && id > 0 ? (liveStore.get(id) || replayStore.get(id)) : null;
+    const name = (q.get('name') || (s && s.name) || '').slice(0, 40), kind = ShipType.shipKind(s ? s.type : q.get('type'));
+    if (!photoLimiter.take(req.socket.remoteAddress || 'ip?')) return send(res, 200, shipPhoto.typePhoto(kind));
+    lookupPhoto(name, kind).then((p) => send(res, 200, p), () => send(res, 200, shipPhoto.typePhoto(kind)));
+    return;
+  }
+  const pm = req.method === 'GET' && url.match(/^\/assets\/ship-photos\/(cargo|tanker|tug|passenger|fishing|unknown)\.webp$/);
+  if (pm) return fs.readFile(path.join(__dirname, 'public', 'assets', 'ship-photos', pm[1] + '.webp'), (e, b) => {
+    if (e) return send(res, 404, { error: 'not found' });
+    res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=86400' }); res.end(b);
+  });
   if (url === '/ask') {
     if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
     let body = '', big = false;
