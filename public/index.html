@@ -45,6 +45,8 @@ body.ask-open #askBtn,body.card-open #askBtn{display:none}
 #askForm{display:flex;gap:8px;flex-shrink:0;margin-top:auto;padding-top:10px;background:#fff}
 #askQ{flex:1;font-size:16px;padding:10px 12px;border:1px solid #ccc;border-radius:10px;min-width:0}
 #askForm button{border:0;border-radius:10px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#askForm button:disabled{opacity:.5}
+#tellMore{margin:12px 8px 0 0;border:0;border-radius:999px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#tellMore:disabled{opacity:.55}
+#askLog .src{display:block;margin-top:8px;font-size:13px;opacity:.85}#askLog .src a{color:inherit}
 #askAbout{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#eef2f5;color:#124;font-weight:700}
 @media (max-width:699px){
   #askPanel.open{left:8px;right:8px;top:calc(env(safe-area-inset-top) + 56px);height:min(48vh,420px);border-radius:16px;box-shadow:0 8px 28px #0004;padding:12px}
@@ -72,7 +74,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2><div id="sFlag" hidden></div>
-<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="askAbout" type="button">Ask Muse about this</button></div>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Tell me more</button><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
@@ -134,7 +136,7 @@ function initLeaflet(){return new Promise(r=>{const c=document.createElement('li
 function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(k);markers.delete(mmsi)}
  for(const s of Object.values(ships)){let k=markers.get(s.mmsi);if(!k){k=engine.add(s);markers.set(s.mmsi,k)}engine.move(k,s);
   const im=k.el.querySelector('img'),u=ShipType.markerUrl(s.type);if(im&&im.getAttribute('src')!==u)im.setAttribute('src',u);k.el.classList.toggle('moored',s.sog!=null&&s.sog<0.5);k.el.classList.toggle('stale',s.stale);k.el.classList.toggle('sel',s.mmsi===selected)}
- if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta()}}
+ if(selected&&!ships[selected])closeCard();else if(selected){fillCard(ships[selected]);loadTrail();syncAskMeta();syncTellMore()}}
 function fillCard(s){$('sNameT').innerHTML=unk(s.name);const fl=MmsiMid.flagOf(s.mmsi),fe=$('sFlag');fe.hidden=!fl;fe.textContent=fl?(fl.flag+' '+fl.country).trim():'';fe.title=fl?'Flag from MMSI MID '+fl.mid:'';const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'');fillExtra(s)}
 const NAV=['Under way (engine)','At anchor','Not under command','Restricted maneuverability','Constrained by draught','Moored','Aground','Fishing','Under way (sailing)'];
@@ -151,7 +153,7 @@ async function loadPhoto(s){const f=$('sPhoto'),im=$('sPhotoImg'),cap=$('sPhotoC
   im.onerror=()=>{f.hidden=true;layoutAsk()};im.onload=()=>{if(photoFor===s.mmsi){f.hidden=false;layoutAsk()}};im.alt=p.match==='name'?'Photo of '+(s.name||'vessel'):'Illustrative '+ShipType.shipKind(s.type)+' vessel';
   cap.textContent='';if(p.match==='name'&&/^https:\/\/commons\.wikimedia\.org\//.test(p.url)){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=p.attribution+(p.license?' · '+p.license:'');cap.appendChild(a)}else cap.textContent='Type photo (not this vessel)';
   const src=p.thumbUrl||p.url;if(im.getAttribute('src')===src&&im.complete&&im.naturalWidth){f.hidden=false;layoutAsk();return}im.src=src}catch{f.hidden=true;layoutAsk()}}
-function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);loadPhoto(ships[mmsi]);$('sheet').classList.add('open');document.body.classList.add('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
+function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);syncTellMore();loadPhoto(ships[mmsi]);$('sheet').classList.add('open');document.body.classList.add('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
 function closeCard(){selected=null;$('sheet').classList.remove('open');document.body.classList.remove('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
 $('close').onclick=closeCard;
 let demo=false; // explicit opt-in only; never auto-switched
@@ -199,4 +201,16 @@ $('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim(
    think.className='err';think.textContent=msg}}
  catch{think.className='err';think.textContent='Offline — could not reach Harbor Muse.'}finally{go.disabled=false}};
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+
+let tmBusy=null;
+function syncTellMore(){const b=$('tellMore'),s=selected&&ships[selected],ok=!!(s&&s.mmsi&&s.name);b.disabled=!ok||tmBusy===selected;b.textContent=tmBusy===selected?'Looking up…':'Tell me more';b.title=ok?'':'Needs a ship name and MMSI'}
+$('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi||!s.name||tmBusy)return;tmBusy=s.mmsi;syncTellMore();openAsk(s.mmsi);
+ askBubble('me','Tell me more about '+s.name);const think=askBubble('ans wait','Looking up…');const body={mmsi:+s.mmsi,name:String(s.name).slice(0,60)};if(s.imo&&/^\d{7}$/.test(String(s.imo)))body.imo=String(s.imo);
+ try{const r=await fetch('/tell-more',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
+  if(r.ok&&d.answer){think.classList.remove('wait');think.textContent=d.answer;
+   if(Array.isArray(d.sources)&&d.sources.length){const p=document.createElement('span');p.className='src';p.append('Sources: ');d.sources.slice(0,3).forEach((x,i)=>{if(!/^https?:\/\//.test(x.url))return;if(i)p.append(' · ');const a=document.createElement('a');a.href=x.url;a.target='_blank';a.rel='noopener';a.textContent=x.title||x.url;p.appendChild(a)});think.appendChild(p)}
+   think.scrollIntoView({block:'end'})}
+  else{think.className='err';think.textContent=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Tell me more is not set up on this server yet.':(d.error||'Muse had a problem. Try again.')}
+ }catch{think.className='err';think.textContent='Could not reach the server.'}
+ finally{tmBusy=null;syncTellMore()}};
 </script></body></html>

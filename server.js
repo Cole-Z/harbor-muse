@@ -6,6 +6,7 @@ const WebSocket = require('ws');
 const geo = require('./lib/geo');
 const trail = require('./lib/trail');
 const ask = require('./lib/ask');
+const tellMore = require('./lib/tellMore');
 const shipPhoto = require('./lib/shipPhoto');
 const ShipType = require('./public/shiptype');
 const askLimiter = ask.makeLimiter(10, 10 * 60e3);
@@ -208,6 +209,21 @@ async function handleAsk(req, res, body) {
     send(res, 502, { error: e.code ? e.message : 'Muse had a problem. Try again in a moment.' });
   }
 }
+// POST /tell-more {mmsi,name?,imo?}: Spark web search; shares the /ask per-visitor budget. Names never logged.
+async function handleTellMore(req, res, body) {
+  let j; try { j = JSON.parse(body); } catch { return send(res, 400, { error: 'bad json' }); }
+  const bad = tellMore.validate(j); if (bad) return send(res, 400, { error: bad });
+  const museKey = process.env.MUSE_API_KEY || '';
+  if (!museKey) return send(res, 503, { error: 'Tell me more is not configured' });
+  if (!askLimiter.take(viewerId(req))) return send(res, 429, { error: 'Too many questions. Try again in a few minutes.' });
+  const s = liveStore.get(j.mmsi) || replayStore.get(j.mmsi);
+  const ship = { mmsi: j.mmsi, name: j.name || (s && s.name) || null, imo: j.imo || (s && s.imo) || null };
+  try { send(res, 200, await tellMore.callTellMore({ key: museKey, url: process.env.MUSE_RESPONSES_URL || undefined, ship })); }
+  catch (e) {
+    console.log('tell-more: failed', e.code || 'error');
+    send(res, 502, { error: e.code ? e.message : 'Muse had a problem. Try again in a moment.' });
+  }
+}
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'), url = u.pathname;
   if (req.method === 'GET' && url === '/ships') {
@@ -253,6 +269,13 @@ const server = http.createServer((req, res) => {
     let body = '', big = false;
     req.on('data', (d) => { if (big) return; body += d; if (body.length > 2048) { big = true; send(res, 413, { error: 'body too large' }); req.destroy(); } });
     req.on('end', () => { if (!big) handleAsk(req, res, body); });
+    return;
+  }
+  if (url === '/tell-more') {
+    if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+    let body = '', big = false;
+    req.on('data', (d) => { if (big) return; body += d; if (body.length > 1024) { big = true; send(res, 413, { error: 'body too large' }); req.destroy(); } });
+    req.on('end', () => { if (!big) handleTellMore(req, res, body); });
     return;
   }
   if (req.method === 'GET' && STATIC[url]) {
