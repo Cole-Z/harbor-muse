@@ -168,7 +168,7 @@ test('client sends selected card mmsi on every /ask and keeps a side chat histor
   assert.match(html, /openAsk\(selected\)/);
   assert.match(html, /Ask about '\+s\.name/);
   assert.match(html, /id="askLog"/);
-  assert.match(html, /min-width:700px/);
+  assert.match(html, /min-width:768px/);
   assert.match(html, /body\.ask-open #sheet/);
   assert.doesNotMatch(html, /openAsk\(null\)/);
   assert.doesNotMatch(html, /id="askOut"|\$\('askOut'\)/);
