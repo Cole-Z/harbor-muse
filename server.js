@@ -8,8 +8,10 @@ const trail = require('./lib/trail');
 const ask = require('./lib/ask');
 const tellMore = require('./lib/tellMore');
 const shipPhoto = require('./lib/shipPhoto');
+const voice = require('./lib/voice');
 const ShipType = require('./public/shiptype');
 const askLimiter = ask.makeLimiter(10, 10 * 60e3);
+const voiceLimiter = ask.makeLimiter(10, 10 * 60e3); // sibling of the ask bucket
 const photoLimiter = ask.makeLimiter(30, 60e3);
 const lookupPhoto = shipPhoto.makeShipPhoto();
 
@@ -224,6 +226,23 @@ async function handleTellMore(req, res, body) {
     send(res, 502, { error: e.code ? e.message : 'Muse had a problem. Try again in a moment.' });
   }
 }
+// POST /transcribe (multipart "audio" or raw blob): push-to-talk STT. Audio bytes/transcripts/key never logged.
+async function handleTranscribe(req, res, buf) {
+  const museKey = process.env.MUSE_API_KEY || '';
+  if (!museKey) return send(res, 503, { error: 'Voice is not configured' });
+  if (!voiceLimiter.take(viewerId(req))) return send(res, 429, { error: 'Too many voice clips. Try again in a few minutes.' });
+  const ct = String(req.headers['content-type'] || '');
+  const audio = /multipart\/form-data/i.test(ct) ? voice.parseMultipart(buf, ct) : buf;
+  if (!audio || audio.length < 100) return send(res, 400, { error: 'No audio received.' });
+  try {
+    const wav = await voice.toWav(audio);
+    send(res, 200, await voice.transcribe({ key: museKey, wav, url: process.env.MUSE_ASR_URL || undefined }));
+  } catch (e) {
+    console.log('transcribe: failed', e.code || 'error');
+    const c = [400, 429, 503].includes(e.code) ? e.code : 502;
+    send(res, c, { error: e.code ? e.message : 'Voice had a problem. Type instead.' });
+  }
+}
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'), url = u.pathname;
   if (req.method === 'GET' && url === '/ships') {
@@ -269,6 +288,13 @@ const server = http.createServer((req, res) => {
     let body = '', big = false;
     req.on('data', (d) => { if (big) return; body += d; if (body.length > 2048) { big = true; send(res, 413, { error: 'body too large' }); req.destroy(); } });
     req.on('end', () => { if (!big) handleAsk(req, res, body); });
+    return;
+  }
+  if (url === '/transcribe') {
+    if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+    const chunks = []; let n = 0, big = false;
+    req.on('data', (d) => { if (big) return; n += d.length; if (n > voice.MAX_BYTES) { big = true; send(res, 413, { error: 'clip too large' }); req.destroy(); return; } chunks.push(d); });
+    req.on('end', () => { if (!big) handleTranscribe(req, res, Buffer.concat(chunks)); });
     return;
   }
   if (url === '/tell-more') {
