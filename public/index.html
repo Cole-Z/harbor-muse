@@ -51,6 +51,10 @@ body.ask-open #askBtn,body.card-open #askBtn{display:none}
 #askForm{display:flex;gap:8px;flex-shrink:0;margin-top:auto;padding-top:10px;background:#fff}
 #askQ{flex:1;font-size:16px;padding:10px 12px;border:1px solid #ccc;border-radius:10px;min-width:0}
 #askForm button{border:0;border-radius:10px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#askForm button:disabled{opacity:.5}
+#askForm #askMic{flex-shrink:0;width:44px;padding:0;background:#e5e7eb;color:#111;font-size:18px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#askMic[data-state=recording]{background:#dc2626;color:#fff;animation:micPulse 1s infinite}#askMic[data-state=transcribing]{opacity:.6}
+@keyframes micPulse{50%{box-shadow:0 0 0 6px rgba(220,38,38,.25)}}
+html[data-theme=night] #askForm #askMic{background:#374151;color:#fff}html[data-theme=night] #askForm #askMic[data-state=recording]{background:#dc2626}
 #tellMore{margin:12px 8px 0 0;border:0;border-radius:999px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#tellMore:disabled{opacity:.55}
 #askLog .src{display:block;margin-top:8px;font-size:13px;opacity:.85}#askLog .src a{color:inherit}
 #askAbout{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#eef2f5;color:#124;font-weight:700}
@@ -101,7 +105,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><button id="askChip" type="button" aria-label="Show ship card"><img id="askChipIcon" alt="" width="20" height="20"><span id="askChipName"></span></button><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
-<form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
+<form id="askForm"><button id="askMic" type="button" aria-label="Hold to talk" title="Hold to talk" data-state="idle" hidden>🎤</button><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
 <script src="/sun.js"></script>
 <script src="/course.js"></script>
 <script src="/shiptype.js"></script>
@@ -275,4 +279,36 @@ $('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi
   else{think.className='err';think.textContent=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Tell me more is not set up on this server yet.':(d.error||'Muse had a problem. Try again.')}
  }catch{think.className='err';think.textContent='Could not reach the server.'}
  finally{tmBusy=null;syncTellMore()}};
+
+// Push-to-talk (Path A): hold mic -> MediaRecorder -> POST /transcribe -> text into Ask box. Never auto-sends.
+(()=>{const mic=$('askMic'),MAX_MS=20e3;if(!mic||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder)return;
+ mic.hidden=false;let rec=null,stream=null,chunks=[],cap=null,state='idle',held=false;
+ const set=(st,label)=>{state=st;mic.dataset.state=st;mic.setAttribute('aria-label',label||(st==='recording'?'Recording — release to stop':st==='transcribing'?'Transcribing…':'Hold to talk'));
+  if(st==='transcribing')$('askQ').placeholder='Transcribing…';else if(st==='recording')$('askQ').placeholder='Listening…';else $('askQ').placeholder="What's that ship?"};
+ const note=t=>{$('askQ').placeholder=t;setTimeout(()=>{if(state==='idle')$('askQ').placeholder="What's that ship?"},3500)};
+ const pickType=()=>['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+ const stopTracks=()=>{if(stream)stream.getTracks().forEach(t=>t.stop());stream=null};
+ async function start(){if(state!=='idle'||$('askGo').disabled)return;held=true;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))mic.hidden=true;else note('Mic unavailable — type instead');return}
+  if(!held){stopTracks();return} // released before permission resolved
+  const type=pickType();try{rec=new MediaRecorder(stream,type?{mimeType:type}:undefined)}catch{stopTracks();note('Mic unavailable — type instead');return}
+  chunks=[];rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};rec.onstop=upload;rec.start();set('recording');
+  cap=setTimeout(stop,MAX_MS)}
+ function stop(){held=false;clearTimeout(cap);if(rec&&rec.state==='recording'){set('transcribing');rec.stop()}}
+ async function upload(){stopTracks();const type=(rec&&rec.mimeType)||'audio/webm';rec=null;const blob=new Blob(chunks,{type});chunks=[];
+  if(blob.size<500){set('idle');note("Didn't catch that — try again");return}
+  const ext=/mp4/.test(type)?'mp4':/ogg/.test(type)?'ogg':/wav/.test(type)?'wav':'webm';
+  const fd=new FormData();fd.append('audio',blob,'clip.'+ext);
+  try{const r=await fetch('/transcribe',{method:'POST',headers:{'X-Viewer':VID},body:fd});const d=await r.json().catch(()=>({}));set('idle');
+   if(r.ok){const t=String(d.transcript??d.text??'').trim();if(!t){note("Didn't catch that — try again");return}
+    const q=$('askQ'),cur=q.value.trim();q.value=(cur?cur+' '+t:t).slice(0,300);q.focus();return}
+   note(r.status===429?'Busy — type instead':r.status===503?'Voice not set up — type instead':r.status===400?"Couldn't read that clip — try again":'Voice had a problem — type instead')}
+  catch{set('idle');note('Voice offline — type instead')}}
+ mic.addEventListener('pointerdown',e=>{e.preventDefault();try{mic.setPointerCapture(e.pointerId)}catch{}start()});
+ ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>mic.addEventListener(ev,()=>{if(held||state==='recording')stop()}));
+ mic.addEventListener('contextmenu',e=>e.preventDefault());
+ mic.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();start()}});
+ mic.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')stop()});
+})();
 </script></body></html>
