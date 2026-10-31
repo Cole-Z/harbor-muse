@@ -275,7 +275,7 @@ const server = http.createServer((req, res) => {
     const q = u.searchParams, id = +q.get('mmsi'), s = Number.isInteger(id) && id > 0 ? (liveStore.get(id) || replayStore.get(id)) : null;
     const name = (q.get('name') || (s && s.name) || '').slice(0, 40), kind = ShipType.shipKind(s ? s.type : q.get('type'));
     if (!photoLimiter.take(req.socket.remoteAddress || 'ip?')) return send(res, 200, shipPhoto.typePhoto(kind));
-    lookupPhoto(name, kind).then((p) => send(res, 200, p), () => send(res, 200, shipPhoto.typePhoto(kind)));
+    lookupPhoto(name, kind, { mmsi: s ? s.mmsi : (id > 0 ? id : null), imo: s && s.imo }).then((p) => send(res, 200, p), () => send(res, 200, shipPhoto.typePhoto(kind)));
     return;
   }
   const pm = req.method === 'GET' && url.match(/^\/assets\/ship-photos\/(cargo|tanker|tug|passenger|fishing|unknown)\.webp$/);

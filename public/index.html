@@ -18,7 +18,7 @@
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -4px 18px #0004;padding:14px 18px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(110%);transition:transform .2s;min-height:35vh}
 #sheet.open{transform:none}
 #sheet h2{margin:4px 40px 10px 0;font-size:22px}
-#sPhoto{margin:8px 0 4px}#sPhoto[hidden]{display:none!important}#sPhoto img{display:block;width:100%;height:72px;object-fit:cover;border-radius:10px;background:#dde5ec}#sPhoto figcaption{font-size:11px;line-height:1.3;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(min-width:768px){#sPhoto img{height:96px}}#sPhoto a{color:inherit}
+#sPhoto{margin:8px 0 4px;overflow:hidden;border-radius:10px}#sPhoto[hidden]{display:none!important}#sPhoto img{display:block;width:100%;height:72px;max-height:80px;object-fit:cover;object-position:center;border-radius:10px;overflow:hidden;background:#dde5ec}#sPhoto figcaption{font-size:11px;line-height:1.3;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(min-width:768px){#sPhoto img{height:96px;max-height:100px}}#sPhoto a{color:inherit}
 #sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}#sExtra{margin:8px 0 0;font-size:13px;color:#555;line-height:1.4}
 #close{position:absolute;right:10px;top:8px;width:44px;height:44px;border:0;background:#eee;border-radius:50%;font-size:22px}
 .unk{color:#888;font-weight:400}

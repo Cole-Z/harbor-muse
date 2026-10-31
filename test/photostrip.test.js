@@ -13,7 +13,8 @@ test('photo strip sits after the card fields and before the ask button', () => {
 test('photo strip is ~72px on phone and ~96px on wide screens', () => {
   const css = html.match(/#sPhoto\{[^]*?#sPhoto a\{[^}]*\}/)[0];
   assert.match(css, /#sPhoto img\{[^}]*height:72px/);
-  assert.match(css, /@media\(min-width:768px\)\{#sPhoto img\{height:96px\}\}/);
+  assert.match(css, /@media\(min-width:768px\)\{#sPhoto img\{height:96px;max-height:100px\}\}/);
+  assert.match(css, /object-fit:cover;object-position:center/); assert.match(css, /max-height:80px/); assert.match(css, /#sPhoto\{[^}]*overflow:hidden/);
   assert.doesNotMatch(css, /height:140px/);
 });
 test('hidden photo strip is display:none so it does not take card space', () => {
