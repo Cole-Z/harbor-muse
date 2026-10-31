@@ -94,7 +94,23 @@ html[data-theme=night] #close{background:#374151;color:#f9fafb}html[data-theme=n
 html[data-theme=night] #sPhoto figcaption{color:#94a3b8}
 html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[data-theme=night] #credits a{color:#9cf}
 #sFlag{margin:-6px 0 6px 36px;font-size:13px;opacity:.8}
+#splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0B1F33 0%,#12304A 100%);color:#F2F6FA;overflow:hidden;transition:opacity .35s ease,transform .35s ease;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#splash.out{opacity:0;transform:translateY(-12px);pointer-events:none}
+#splash h1{margin:0 0 18px;font-size:34px;font-weight:700;letter-spacing:.06em}
+#splashShip{width:110px;height:auto;animation:splBob 3s ease-in-out infinite;position:relative;z-index:2;margin-bottom:-14px}
+#splashWaves{position:relative;width:100%;height:90px}
+#splashWaves svg{position:absolute;left:0;bottom:0;width:200%;height:100%;will-change:transform}
+#splashWaves .w1{animation:splWave 14s linear infinite;opacity:.35}
+#splashWaves .w2{animation:splWave 10s linear infinite;opacity:.55;bottom:-10px}
+#splashWaves .w3{animation:splWave 8s linear infinite;opacity:.85;bottom:-22px}
+#splashMsg{margin-top:22px;font-size:14px;color:#9FB6CC}
+#splash.still *,#splash.out *{animation:none!important}
+@keyframes splBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes splWave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){#splash *{animation:none!important}#splash{transition:opacity .2s}#splash.out{transform:none}}
 </style></head><body>
+<div id="splash" role="status" aria-label="Harbor Muse loading"><h1>Harbor Muse</h1><svg id="splashShip" viewBox="0 0 120 60" aria-hidden="true"><rect x="62" y="14" width="22" height="16" fill="#DCE6EF"/><rect x="68" y="6" width="6" height="9" fill="#E8833A"/><rect x="22" y="22" width="12" height="8" fill="#5FA8D3"/><rect x="36" y="22" width="12" height="8" fill="#E8833A"/><rect x="50" y="22" width="10" height="8" fill="#5FA8D3"/><path d="M4 30 H116 L104 48 H14 Z" fill="#F2F6FA"/><path d="M10 40 H110 L104 48 H14 Z" fill="#C0392B"/></svg><div id="splashWaves"><svg class="w1" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true"><path fill="#2B5F8A" d="M0 30 Q75 10 150 30 T300 30 T450 30 T600 30 T750 30 T900 30 T1050 30 T1200 30 V60 H0Z"/></svg><svg class="w2" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true"><path fill="#1E4F78" d="M0 30 Q75 10 150 30 T300 30 T450 30 T600 30 T750 30 T900 30 T1050 30 T1200 30 V60 H0Z"/></svg><svg class="w3" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true"><path fill="#173F63" d="M0 30 Q75 10 150 30 T300 30 T450 30 T600 30 T750 30 T900 30 T1050 30 T1200 30 V60 H0Z"/></svg></div><div id="splashMsg" aria-live="polite">Loading ships…</div></div>
+<script>(function(){var el=document.getElementById('splash'),t0=Date.now(),mapOk=false,shipsOk=false,done=false,wait=null;if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)el.classList.add('still');function dismiss(){if(done)return;done=true;clearTimeout(wait);clearTimeout(cap);el.classList.add('out');el.setAttribute('aria-hidden','true');setTimeout(function(){el.hidden=true;if(el.parentNode)el.parentNode.removeChild(el)},400)}function check(){if(mapOk&&shipsOk)dismiss()}var cap=setTimeout(dismiss,4000);window.splash={mapReady:function(){if(mapOk)return;mapOk=true;wait=setTimeout(dismiss,2500);check()},shipsReady:function(){shipsOk=true;check()},dismiss:dismiss}})()</script>
 <div id="map"></div>
 <div id="top"><span class="pill" id="title">Harbor Muse</span><span class="pill" id="count">0 ships</span><span class="pill" id="badge">…</span></div>
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
@@ -150,7 +166,7 @@ function rot(s){return s.hdg??s.cog??0}
 function makeEl(s){const el=document.createElement('div');el.className='ship';el.innerHTML=icon(s);el.setAttribute('role','button');el.setAttribute('aria-label',s.name||('MMSI '+s.mmsi));
  el.addEventListener('click',e=>{e.stopPropagation();openCard(s.mmsi)});return el}
 // map engines: MapLibre first, Leaflet + OSM raster fallback
-function initMapLibre(){curTheme=theme();setThemeClass();map=new maplibregl.Map({container:'map',style:styleUrl(curTheme),center:CENTER,zoom:ZOOM,attributionControl:false});
+function initMapLibre(){curTheme=theme();setThemeClass();map=new maplibregl.Map({container:'map',style:styleUrl(curTheme),center:CENTER,zoom:ZOOM,attributionControl:false});map.once('load',()=>window.splash&&splash.mapReady());
  map.on('click',closeCard);applyTheme=()=>{const t=theme();if(t!==curTheme){curTheme=t;map.setStyle(styleUrl(t))}};engine={add(s){const el=makeEl(s);const m=new maplibregl.Marker({element:el,rotationAlignment:'map'}).setLngLat([s.lon,s.lat]).addTo(map);return {m,el}},
  move(k,s){k.m.setLngLat([s.lon,s.lat]);k.m.setRotation(rot(s))},remove(k){k.m.remove()},
  trail(pts){if(!map.isStyleLoaded())return;const data={type:'Feature',geometry:{type:'LineString',coordinates:pts.map(p=>[p.lon,p.lat])}};const src=map.getSource('trail');
@@ -201,7 +217,7 @@ async function poll(){if(document.hidden||polling)return;polling=true;clearTimeo
  const next={};for(const s of d.ships)next[s.mmsi]=s;ships=next;
  const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}
  catch(e){const b=$('badge');b.textContent='Reconnecting…';b.className='pill'}
- finally{polling=false;schedule()}}
+ finally{polling=false;window.splash&&splash.shipsReady();schedule()}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
 function loadMapLibre(){return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 // ---- Ask Muse (typed). Location/heading go with the request only. ----
@@ -236,7 +252,7 @@ $('lookBtn').onclick=async()=>{if(lookOn)return setLook(false);const ok=await re
 // staleness (>5 s without heading), user location / map moves, MapLibre style swaps
 setInterval(()=>{if(lookOn&&lookShown!==lookLive())lookUpdate()},1000);
 let lookHere=null;setInterval(()=>{if(lookOn&&here&&here!==lookHere){lookHere=here;lookUpdate()}},1000);
-(async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet()}
+(async()=>{try{if(!webgl())throw 0;await loadMapLibre();initMapLibre()}catch{await initLeaflet();window.splash&&splash.mapReady()}
  if(map&&map.on){map.on('moveend',()=>{if(lookOn&&!here)lookUpdate()});if(!(window.L&&map instanceof L.Map))map.on('styledata',()=>{if(lookOn&&!map.getSource('cone'))drawWedge()})}
  center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
  if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
