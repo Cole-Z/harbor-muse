@@ -54,11 +54,27 @@ body.ask-open #askBtn,body.card-open #askBtn{display:none}
 #tellMore{margin:12px 8px 0 0;border:0;border-radius:999px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:700}#tellMore:disabled{opacity:.55}
 #askLog .src{display:block;margin-top:8px;font-size:13px;opacity:.85}#askLog .src a{color:inherit}
 #askAbout{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#eef2f5;color:#124;font-weight:700}
-@media (max-width:699px){
+@media (max-width:767px){
   #askPanel.open{left:8px;right:8px;top:calc(env(safe-area-inset-top) + 56px);height:min(48vh,420px);border-radius:16px;box-shadow:0 8px 28px #0004;padding:12px}
-  body.card-open #askPanel.open{bottom:calc(var(--sheet-h, 35vh) + 8px);height:auto}
+  /* Mobile Ask mode: Muse panel owns the viewport; map + card yield (card collapses to #askChip). */
+  body.ask-open #map,body.ask-open #sheet,body.ask-open #top,body.ask-open #note,body.ask-open #credits,body.ask-open #lookBtn,body.ask-open #toast{visibility:hidden}
+  body.ask-open #askPanel.open{left:0;right:0;top:var(--vvt,0px);bottom:auto;height:var(--vvh,100dvh);border-radius:0;box-shadow:none;padding:calc(env(safe-area-inset-top) + 6px) 8px 8px}
+  body.ask-open #askHead{margin-bottom:6px;min-height:36px}
+  body.ask-open #askSel{font-size:11px;font-weight:500;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.ask-open #askLog{gap:6px;min-height:0}
+  body.ask-open #askLog .me,body.ask-open #askLog .ans,body.ask-open #askLog .err{max-width:92%;font-size:14px;line-height:1.35;padding:8px 10px;border-radius:12px}
+  body.ask-open #askLog .wait{padding:4px 10px;font-size:13px}
+  body.ask-open #askLog .conf,body.ask-open #askLog .src{font-size:11px;margin-top:4px}
+  body.ask-open #askLog .askShow{font-size:13px;padding:6px 10px;margin-top:6px}
+  body.ask-open #askForm{padding-top:6px;padding-bottom:env(safe-area-inset-bottom)}
+  body.ask-open #askQ{font-size:16px;padding:8px 10px}
+  body.ask-open #askForm button{padding:8px 12px}
 }
-@media (min-width:700px){
+#askChip{display:none;align-items:center;gap:6px;max-width:60%;border:0;border-radius:999px;background:#eef2f5;color:#124;font-weight:600;font-size:13px;padding:4px 10px 4px 6px;flex-shrink:1;min-width:0}
+#askChip img{width:20px;height:20px;flex-shrink:0}#askChip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:767px){body.ask-open #askChip.on{display:inline-flex}}
+html[data-theme=night] #askChip{background:#1f2937;color:#e2e8f0}
+@media (min-width:768px){
   #askPanel.open{top:0;right:0;bottom:0;width:min(400px,42vw);border-radius:0;box-shadow:-4px 0 18px #0003;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
   body.ask-open #map,body.ask-open #credits,body.ask-open #sheet,body.ask-open #note{right:min(400px,42vw)}
   body.ask-open #top{right:calc(min(400px,42vw) + 10px)}
@@ -83,7 +99,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Tell me more</button><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="lookBtn" type="button" aria-pressed="false" aria-label="Looking at" title="Looking at"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor"/></svg></button><div id="toast" role="status"></div>
 <button id="askBtn" type="button">Ask Muse</button>
-<div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
+<div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><button id="askChip" type="button" aria-label="Show ship card"><img id="askChipIcon" alt="" width="20" height="20"><span id="askChipName"></span></button><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
 <form id="askForm"><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
 <script src="/sun.js"></script>
@@ -221,10 +237,17 @@ let lookHere=null;setInterval(()=>{if(lookOn&&here&&here!==lookHere){lookHere=he
  center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
  if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
 function askId(){return selected||askMmsi||null}
-function syncAskMeta(){const id=askId(),s=id&&ships[id];$('askSel').textContent=id?'About: '+(s&&s.name||('MMSI '+id)):'Ask about ships on the map';
+function syncAskMeta(){const id=askId(),s=id&&ships[id];syncAskChip();$('askSel').textContent=id?'About: '+(s&&s.name||('MMSI '+id)):'Ask about ships on the map';
  $('askQ').placeholder=s&&s.name?('Ask about '+s.name+'…'):id?'Ask about this ship…':"What's that ship?"}
 function openAsk(mmsi){startCompass();askMmsi=mmsi||selected||null;syncAskMeta();document.body.classList.add('ask-open');$('askPanel').classList.add('open');layoutAsk();$('askQ').focus()}
 function closeAsk(){document.body.classList.remove('ask-open');$('askPanel').classList.remove('open');layoutAsk()}
+// Mobile Ask mode (<768px): chip = collapsed card; visualViewport keeps the sticky input above the keyboard.
+function syncAskChip(){const id=askId(),s=id&&ships[id],c=$('askChip');c.classList.toggle('on',!!id);if(!id)return;
+ $('askChipName').textContent=s&&s.name||('MMSI '+id);$('askChipIcon').src=$('sIcon').getAttribute('src')||'/assets/ship-types/unknown.svg'}
+function fitViewport(){const v=window.visualViewport,r=document.documentElement.style;if(!v){r.removeProperty('--vvh');r.removeProperty('--vvt');return}
+ r.setProperty('--vvh',v.height+'px');r.setProperty('--vvt',v.offsetTop+'px');const l=$('askLog');if(document.body.classList.contains('ask-open')&&l.lastChild)l.scrollTop=l.scrollHeight}
+if(window.visualViewport){visualViewport.addEventListener('resize',fitViewport);visualViewport.addEventListener('scroll',fitViewport)}fitViewport();
+$('askChip').onclick=()=>{const id=askId();closeAsk();if(id&&ships[id]&&id!==selected)openCard(id)};
 $('askBtn').onclick=()=>openAsk(selected);$('askAbout').onclick=()=>openAsk(selected);$('askX').onclick=closeAsk;
 addEventListener('resize',layoutAsk);
 function viewBox(){try{if(map.getBounds){const b=map.getBounds();return{n:b.getNorth(),s:b.getSouth(),e:b.getEast(),w:b.getWest()}}}catch{}return undefined}
