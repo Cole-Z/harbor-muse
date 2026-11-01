@@ -46,13 +46,12 @@ test('callTellMore: posts bearer + body, maps HTTP errors to 502', async () => {
 test('card Tell me more opens the Muse chat with sources; /ask stays Wonder', () => {
   assert.match(html, /id="tellMore"/);
   assert.match(html, /fetch\('\/tell-more'/);
-  assert.match(html, /askBubble\('me','Tell me more about '/);
+  assert.match(html, /askBubble\('me','Explain what I’m looking at: '/);
   assert.match(html, /className='src'/);
   assert.match(html, /fetch\('\/ask'/);
   assert.equal(ask.MODEL, 'muse-wonder-1.0');
   assert.equal(tm.MODEL, 'muse-spark-1.3');
 });
-
 test('buildBody: FEED carries AIS scene + mode/asOf; concise explainer instruction', () => {
   const b = tm.buildBody({ mmsi: 538001234, name: 'DUMMY', imo: '9123456', type: 80, sog: 0, cog: 12.3, hdg: 511, dest: 'USCRP',
     navStatus: 0, draught: 12.1, length: 250, beam: 44, callsign: 'V7AB1', ageSec: 42, mode: 'replay', asOf: '2026-11-01T11:00:00.000Z' });
@@ -78,4 +77,18 @@ test('server: tell-more builds FEED from store + 404s missing ship', () => {
   assert.match(src, /send\(res, 404, \{ error: 'That ship is no longer on the map\.' \}\)/);
   assert.match(src, /mode: md, asOf: new Date\(now\)\.toISOString\(\)/);
   assert.match(html, /Looking up…/);
+});
+test('P2: primary button reads Explain what I’m looking at, still POSTs /tell-more', () => {
+  assert.match(html, /<button id="tellMore" type="button">Explain what I’m looking at<\/button>/);
+  assert.match(html, /EXPLAIN_LABEL='Explain what I’m looking at'/);
+  assert.doesNotMatch(html, />Tell me more</);
+  assert.match(html, /fetch\('\/tell-more'/);
+});
+test('P2: follow-up chips after explain answer go to /ask with selected mmsi', () => {
+  assert.match(html, /What does this type of ship do\?/);
+  assert.match(html, /Can you explain its reported destination\?/);
+  assert.match(html, /addFollowups\(think,s\.mmsi\)/);
+  assert.match(html, /function askFollowup\(q,mmsi\)\{if\(mmsi\)askMmsi=mmsi;[^}]*\$\('askQ'\)\.value=q;\$\('askForm'\)\.requestSubmit\(\)/);
+  const m = html.match(/function askFollowup[^\n]*/)[0];
+  assert.doesNotMatch(m, /tell-more/);
 });
