@@ -4,7 +4,7 @@ const tm = require('../lib/tellMore'), ask = require('../lib/ask'), st = require
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('badge copy separates scene from freshness', () => {
-  assert.strictEqual(st.badgeText('replay', true), 'REPLAY · recorded scene · Corpus Christi');
+  assert.strictEqual(st.badgeText('replay', true), 'REPLAY · Corpus Christi demo');
   assert.strictEqual(st.badgeText('live', false), 'LIVE · now');
   assert.strictEqual(st.badgeText('waiting'), 'WAITING');
   assert.strictEqual(st.ageLabel('replay'), 'Last fix (replay)');
@@ -29,5 +29,5 @@ test('ask: SYSTEM evidence/time rules + SCENE line', () => {
 test('UI wires labels and scene copy', () => {
   assert.match(html, /<script src="\/scenetime.js"><\/script>/);
   assert.match(html, /\.ev-reported\{/); assert.match(html, /evLabels\(think,d\.answer\)/);
-  assert.match(html, /badgeText\(d\.mode,d\.demo\)/); assert.match(html, /ageText\(s\.ageSec,s\.stale,sceneMode\)/);
+  assert.match(html, /badgeText\(d\.mode,d\.demo,d\.asOf\)/); assert.match(html, /ageText\(s\.ageSec,s\.stale,sceneMode\)/);
 });
