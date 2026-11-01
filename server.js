@@ -203,7 +203,7 @@ async function handleAsk(req, res, body) {
   const ranked = ask.rank(all, j);
   const loc = j.lat != null ? { lat: +j.lat.toFixed(3), lon: +j.lon.toFixed(3), heading: j.heading ?? null } : null;
   try {
-    const a = await ask.callSpark({ key: museKey, url: process.env.MUSE_URL || undefined, user: ask.userMessage(j.q.trim(), j.mmsi, loc, ranked) });
+    const a = await ask.callSpark({ key: museKey, url: process.env.MUSE_URL || undefined, user: ask.userMessage(j.q.trim(), j.mmsi, loc, ranked, { mode: useLive ? 'live' : 'replay', asOf: new Date(now).toISOString() }) });
     if (a.mmsi != null && !pick(a.mmsi)) a.mmsi = null;
     send(res, 200, a);
   } catch (e) {
@@ -326,6 +326,8 @@ const server = http.createServer((req, res) => {
     return fs.readFile(path.join(__dirname, 'public', 'mmsimid.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/cone.js')
     return fs.readFile(path.join(__dirname, 'public', 'cone.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
+  if (req.method === 'GET' && url === '/scenetime.js')
+    return fs.readFile(path.join(__dirname, 'public', 'scenetime.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/sun.js')
     return fs.readFile(path.join(__dirname, 'public', 'sun.js'), (e, b) => e ? send(res, 404, { error: 'not found' }) : send(res, 200, b, 'text/javascript; charset=utf-8'));
   if (req.method === 'GET' && url === '/course.js')
