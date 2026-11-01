@@ -12,6 +12,7 @@ test('buildBody matches locked Researcher shape', () => {
   const b = tm.buildBody({ mmsi: 310627000, name: 'QUEEN MARY 2', imo: null });
   assert.strictEqual(b.model, 'muse-spark-1.3');
   assert.match(b.input, /QUEEN MARY 2/); assert.match(b.input, /310627000/);
+  assert.ok(b.input.includes(tm.EVIDENCE_RULES)); assert.ok(!b.input.includes('SCENE'));
   assert.deepStrictEqual(b.tools, [{ type: 'web_search', search_context_size: 'medium' }]);
   assert.deepStrictEqual(b.include, ['web_search_call.results']);
   assert.strictEqual(b.max_output_tokens, 2500); assert.deepStrictEqual(b.reasoning, { effort: 'minimal' });

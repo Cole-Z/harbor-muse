@@ -10,6 +10,7 @@
 #map{position:fixed;inset:0}
 #top{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:5;pointer-events:none}
 .pill{pointer-events:auto;background:#fff;border-radius:999px;padding:8px 14px;box-shadow:0 2px 8px #0003;font-weight:700}
+.ev{font-size:.72em;font-weight:700;padding:0 4px;border-radius:4px;margin:0 2px}.ev-reported{background:#dcfce7;color:#166534}.ev-inferred{background:#fef3c7;color:#92400e}.ev-unknown{background:#e2e8f0;color:#334155}
 #badge.live{background:#0a7d32;color:#fff}#badge.replay{background:#b45309;color:#fff}#badge.waiting{background:#475569;color:#fff}
 #note{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top) + 60px);z-index:5;background:#fff;border-radius:12px;padding:8px 12px;box-shadow:0 2px 8px #0003;font-size:14px;display:none}
 #title{margin-right:auto}
@@ -117,12 +118,13 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2><div id="sFlag" hidden></div>
-<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt>Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Explain what I’m looking at</button><button id="askAbout" type="button">Ask Muse about this</button></div>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt id="sAgeLbl">Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Explain what I’m looking at</button><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="lookBtn" type="button" aria-pressed="false" aria-label="Looking at" title="Looking at"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor"/></svg></button><div id="toast" role="status"></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><button id="askChip" type="button" aria-label="Show ship card"><img id="askChipIcon" alt="" width="20" height="20"><span id="askChipName"></span></button><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
 <div id="askLog" aria-live="polite"></div>
 <form id="askForm"><button id="askMic" type="button" aria-label="Hold to talk" title="Hold to talk" data-state="idle" hidden>🎤</button><input id="askQ" maxlength="300" enterkeyhint="send" autocomplete="off" placeholder="What's that ship?" aria-label="Question"><button id="askGo">Ask</button></form></div>
+<script src="/scenetime.js"></script>
 <script src="/sun.js"></script>
 <script src="/course.js"></script>
 <script src="/shiptype.js"></script>
@@ -149,7 +151,7 @@ function locate(){if(!navigator.geolocation)return;const ok=p=>{const first=!her
 const $=id=>document.getElementById(id);
 function typeName(t){return ShipType.typeLabel(t)}
 const unk=v=>v==null||v===''?'<span class="unk">unknown</span>':String(v).replace(/[<>&]/g,'');
-let ships={}, selected=null, map, engine;
+let ships={}, selected=null, map, engine, sceneMode=null;
 // Day/night: viewer-local sunrise/sunset (falls back to CENTER until location is known). Markers are DOM markers, so setStyle keeps them.
 let curTheme=null, applyTheme=()=>{};
 const STYLES={day:'https://tiles.openfreemap.org/styles/positron',night:'https://tiles.openfreemap.org/styles/dark'};
@@ -189,7 +191,7 @@ function render(){for(const [mmsi,k] of markers) if(!ships[mmsi]){engine.remove(
  drawCourse()}
 function drawCourse(){if(!engine||!engine.course||!window.Course)return;try{engine.course(selected?Course.stub(ships[selected]):[])}catch{}}
 function fillCard(s){$('sNameT').innerHTML=unk(s.name);const fl=MmsiMid.flagOf(s.mmsi),fe=$('sFlag');fe.hidden=!fl;fe.textContent=fl?(fl.flag+' '+fl.country).trim():'';fe.title=fl?'Flag from MMSI MID '+fl.mid:'';const ic=$('sIcon'),k=ShipType.shipKind(s.type);ic.src=ShipType.iconUrl(s.type);ic.alt=k+' vessel';$('sType').innerHTML=unk(typeName(s.type));$('sSog').innerHTML=s.sog==null?unk():s.sog.toFixed(1)+' kn';
- $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAge').textContent=s.ageSec+' s ago'+(s.stale?' (stale)':'');fillExtra(s)}
+ $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAgeLbl').textContent=ageLabel(sceneMode);$('sAge').textContent=ageText(s.ageSec,s.stale,sceneMode);fillExtra(s)}
 const NAV=['Under way (engine)','At anchor','Not under command','Restricted maneuverability','Constrained by draught','Moored','Aground','Fishing','Under way (sailing)'];
 function aisExtra(s){const e=v=>String(v).replace(/[<>&]/g,''),p=[];if(s.callsign)p.push(e(s.callsign));if(s.imo)p.push('IMO '+e(s.imo));if(s.length&&s.beam)p.push(e(s.length)+'×'+e(s.beam)+' m');if(s.draught)p.push('draught '+e(s.draught)+' m');if(s.navStatus!=null&&NAV[s.navStatus])p.push(NAV[s.navStatus]);if(s.eta)p.push('ETA '+e(s.eta));return p.join(' · ')}
 function fillExtra(s){const x=$('sExtra'),t=aisExtra(s);x.textContent=t;x.hidden=!t}
@@ -216,7 +218,7 @@ function schedule(){clearTimeout(pollT);if(!document.hidden)pollT=setTimeout(pol
 async function poll(){if(document.hidden||polling)return;polling=true;clearTimeout(pollT);
  try{const q=here?'?lat='+here.lat.toFixed(4)+'&lon='+here.lon.toFixed(4)+(demo?'&demo=1':'')+bboxQ():'';const r=await fetch('/ships'+q,{cache:'no-store',headers:{'X-Viewer':VID}});if(!r.ok)throw new Error(r.status);const d=await r.json();if(!d||!Array.isArray(d.ships))throw 0;
  const next={};for(const s of d.ships)next[s.mmsi]=s;ships=next;
- const b=$('badge');b.textContent=d.mode.toUpperCase()+(d.demo?' · Corpus Christi':'');b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}
+ sceneMode=d.mode;const b=$('badge');b.textContent=badgeText(d.mode,d.demo);b.title=d.mode==='replay'?'Recorded AIS scene replayed on a loop — positions are not happening now':'';b.className='pill '+d.mode;$('count').textContent=d.ships.length+(d.ships.length===1?' ship':' ships');const n=$('note'),btn=$('demoBtn');$('noteMain').textContent=d.note||'';$('noteDetail').textContent=d.detail||'';btn.textContent=demo?'Back to my location':'Watch Corpus Christi demo (replay)';btn.style.display=(d.demoAvailable||demo)?'inline-block':'none';n.style.display=(d.note||demo)?'block':'none';if(demo&&!d.note)$('noteMain').textContent='Demo: Corpus Christi replay';render();fitShips(d.ships)}
  catch(e){const b=$('badge');b.textContent='Reconnecting…';b.className='pill'}
  finally{polling=false;window.splash&&splash.shipsReady(Object.keys(ships).length);schedule()}}
 function webgl(){try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch{return false}}
@@ -272,12 +274,13 @@ $('askChip').onclick=()=>{const id=askId();closeAsk();if(id&&ships[id]&&id!==sel
 $('askBtn').onclick=()=>openAsk(selected);$('askAbout').onclick=()=>openAsk(selected);$('askX').onclick=closeAsk;
 addEventListener('resize',layoutAsk);
 function viewBox(){try{if(map.getBounds){const b=map.getBounds();return{n:b.getNorth(),s:b.getSouth(),e:b.getEast(),w:b.getWest()}}}catch{}return undefined}
+function evLabels(n,text){n.textContent='';String(text).split(/(\((?:Reported|Inferred|Unknown)\))/).forEach(p=>{const m=/^\((Reported|Inferred|Unknown)\)$/.exec(p);if(m){const t=document.createElement('span');t.className='ev ev-'+m[1].toLowerCase();t.textContent=m[1];n.appendChild(t)}else if(p)n.append(p)})}
 function askBubble(cls,text){const n=document.createElement('div');n.className=cls;if(text!=null)n.textContent=text;$('askLog').appendChild(n);n.scrollIntoView({block:'end'});return n}
 $('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim();if(!q)return;const go=$('askGo');go.disabled=true;
  const id=askId();syncAskMeta();askBubble('me',q);$('askQ').value='';const think=askBubble('ans wait','Thinking…');
  const body={q};if(id)body.mmsi=+id;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
  try{const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok){think.classList.remove('wait');think.style.whiteSpace='pre-line';think.textContent=d.answer.replace(/\*\*/g,'');const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
+  if(r.ok){think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
    if(d.mmsi&&ships[d.mmsi]&&d.mmsi!==selected){const b=document.createElement('button');b.type='button';b.className='askShow';b.textContent='Show ship';b.onclick=()=>openCard(d.mmsi);think.appendChild(b)}
    think.scrollIntoView({block:'end'})}
   else{const msg=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Ask is not set up on this server yet.':r.status===502?(d.error||'Muse had a problem. Try again.'):(d.error||'Could not ask right now.');
@@ -294,7 +297,7 @@ function syncTellMore(){const b=$('tellMore'),s=selected&&ships[selected],ok=!!(
 $('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi||!s.name||tmBusy)return;tmBusy=s.mmsi;syncTellMore();openAsk(s.mmsi);
  askBubble('me','Explain what I’m looking at: '+s.name);const think=askBubble('ans wait','Looking up…');const body={mmsi:+s.mmsi,name:String(s.name).slice(0,60)};if(s.imo&&/^\d{7}$/.test(String(s.imo)))body.imo=String(s.imo);
  try{const r=await fetch('/tell-more',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok&&d.answer){think.classList.remove('wait');think.style.whiteSpace='pre-line';think.textContent=d.answer.replace(/\*\*/g,'');
+  if(r.ok&&d.answer){think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);
    if(Array.isArray(d.sources)&&d.sources.length){const p=document.createElement('span');p.className='src';p.append('Sources: ');d.sources.slice(0,3).forEach((x,i)=>{if(!/^https?:\/\//.test(x.url))return;if(i)p.append(' · ');const a=document.createElement('a');a.href=x.url;a.target='_blank';a.rel='noopener';a.textContent=x.title||x.url;p.appendChild(a)});think.appendChild(p)}
    addFollowups(think,s.mmsi);
    think.scrollIntoView({block:'end'})}
