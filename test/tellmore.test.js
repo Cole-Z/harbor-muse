@@ -11,7 +11,7 @@ test('validate', () => {
 test('buildBody matches locked Researcher shape', () => {
   const b = tm.buildBody({ mmsi: 310627000, name: 'QUEEN MARY 2', imo: null });
   assert.strictEqual(b.model, 'muse-spark-1.3');
-  assert.strictEqual(b.input, 'Enrich ship card. name=QUEEN MARY 2 IMO=unknown MMSI=310627000. 2-4 sentences. Cite. Only facts matching IMO/MMSI; else uncertain.');
+  assert.match(b.input, /QUEEN MARY 2/); assert.match(b.input, /310627000/);
   assert.deepStrictEqual(b.tools, [{ type: 'web_search', search_context_size: 'medium' }]);
   assert.deepStrictEqual(b.include, ['web_search_call.results']);
   assert.strictEqual(b.max_output_tokens, 2500); assert.deepStrictEqual(b.reasoning, { effort: 'minimal' });
@@ -51,4 +51,31 @@ test('card Tell me more opens the Muse chat with sources; /ask stays Wonder', ()
   assert.match(html, /fetch\('\/ask'/);
   assert.equal(ask.MODEL, 'muse-wonder-1.0');
   assert.equal(tm.MODEL, 'muse-spark-1.3');
+});
+
+test('buildBody: FEED carries AIS scene + mode/asOf; concise explainer instruction', () => {
+  const b = tm.buildBody({ mmsi: 538001234, name: 'DUMMY', imo: '9123456', type: 80, sog: 0, cog: 12.3, hdg: 511, dest: 'USCRP',
+    navStatus: 0, draught: 12.1, length: 250, beam: 44, callsign: 'V7AB1', ageSec: 42, mode: 'replay', asOf: '2026-11-01T11:00:00.000Z' });
+  const feed = JSON.parse(b.input.split('FEED: ')[1]);
+  assert.strictEqual(feed.sogKn, 0); assert.strictEqual(feed.mode, 'replay'); assert.strictEqual(feed.asOf, '2026-11-01T11:00:00.000Z');
+  assert.strictEqual(feed.hdgDeg, null); assert.strictEqual(feed.dest, 'USCRP'); assert.strictEqual(feed.typeLabel != null, true);
+  assert.deepStrictEqual(feed.dims, { lengthM: 250, beamM: 44 }); assert.strictEqual(feed.flag, 'Marshall Islands');
+  assert.strictEqual(feed.navStatusText, 'under way using engine'); assert.strictEqual(feed.ageSec, 42); assert.strictEqual(feed.callsign, 'V7AB1');
+  assert.match(b.input, /Harbor Muse/); assert.match(b.input, /100-160 words/);
+  for (const k of ['What it is', 'Current activity (Reported)', 'Destination', 'Cargo', 'One fact']) assert.ok(b.input.includes(k), k);
+  assert.match(b.input, /Reported \/ Inferred \/ Unknown/); assert.match(b.input, /IMO or MMSI/);
+  assert.match(b.input, /Do not narrate research \(no "I'll search"/);
+  assert.match(b.input, /0\.0 kn\) does not prove anchored/);
+  const lines = b.input.split('\n'); assert.ok(lines.indexOf(lines.find((l) => /IMO\/MMSI\/call sign last/.test(l))) > lines.findIndex((l) => /What it is/.test(l)));
+  const bad = tm.buildFeed({ mmsi: 1, name: 'A`\nB', mode: 'evil' }); assert.strictEqual(bad.mode, null); assert.strictEqual(bad.name, 'A  B');
+});
+test('parseResponse keeps longer structured answers (2500 cap)', () => {
+  const long = 'x'.repeat(3000);
+  assert.strictEqual(tm.parseResponse({ output: [{ type: 'message', content: [{ type: 'output_text', text: long }] }] }, 1).answer.length, 2500);
+});
+test('server: tell-more builds FEED from store + 404s missing ship', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(src, /send\(res, 404, \{ error: 'That ship is no longer on the map\.' \}\)/);
+  assert.match(src, /mode: md, asOf: new Date\(now\)\.toISOString\(\)/);
+  assert.match(html, /Looking up…/);
 });

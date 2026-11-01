@@ -276,7 +276,7 @@ $('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim(
  const id=askId();syncAskMeta();askBubble('me',q);$('askQ').value='';const think=askBubble('ans wait','Thinking…');
  const body={q};if(id)body.mmsi=+id;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
  try{const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok){think.classList.remove('wait');think.textContent=d.answer;const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
+  if(r.ok){think.classList.remove('wait');think.style.whiteSpace='pre-line';think.textContent=d.answer.replace(/\*\*/g,'');const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
    if(d.mmsi&&ships[d.mmsi]&&d.mmsi!==selected){const b=document.createElement('button');b.type='button';b.className='askShow';b.textContent='Show ship';b.onclick=()=>openCard(d.mmsi);think.appendChild(b)}
    think.scrollIntoView({block:'end'})}
   else{const msg=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Ask is not set up on this server yet.':r.status===502?(d.error||'Muse had a problem. Try again.'):(d.error||'Could not ask right now.');
@@ -289,7 +289,7 @@ function syncTellMore(){const b=$('tellMore'),s=selected&&ships[selected],ok=!!(
 $('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi||!s.name||tmBusy)return;tmBusy=s.mmsi;syncTellMore();openAsk(s.mmsi);
  askBubble('me','Tell me more about '+s.name);const think=askBubble('ans wait','Looking up…');const body={mmsi:+s.mmsi,name:String(s.name).slice(0,60)};if(s.imo&&/^\d{7}$/.test(String(s.imo)))body.imo=String(s.imo);
  try{const r=await fetch('/tell-more',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok&&d.answer){think.classList.remove('wait');think.textContent=d.answer;
+  if(r.ok&&d.answer){think.classList.remove('wait');think.style.whiteSpace='pre-line';think.textContent=d.answer.replace(/\*\*/g,'');
    if(Array.isArray(d.sources)&&d.sources.length){const p=document.createElement('span');p.className='src';p.append('Sources: ');d.sources.slice(0,3).forEach((x,i)=>{if(!/^https?:\/\//.test(x.url))return;if(i)p.append(' · ');const a=document.createElement('a');a.href=x.url;a.target='_blank';a.rel='noopener';a.textContent=x.title||x.url;p.appendChild(a)});think.appendChild(p)}
    think.scrollIntoView({block:'end'})}
   else{think.className='err';think.textContent=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Tell me more is not set up on this server yet.':(d.error||'Muse had a problem. Try again.')}
