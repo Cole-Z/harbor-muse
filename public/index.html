@@ -20,7 +20,7 @@
 #sheet.open{transform:none}
 #sheet h2{margin:4px 40px 10px 0;font-size:22px}
 #sPhoto{margin:8px 0 4px;overflow:hidden;border-radius:10px}#sPhoto[hidden]{display:none!important}#sPhoto img{display:block;width:100%;height:72px;max-height:80px;object-fit:cover;object-position:center;border-radius:10px;overflow:hidden;background:#dde5ec}#sPhoto figcaption{font-size:11px;line-height:1.3;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(min-width:768px){#sPhoto img{height:96px;max-height:100px}}#sPhoto a{color:inherit}
-#sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}#sExtra{margin:8px 0 0;font-size:13px;color:#555;line-height:1.4}
+#sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}#sheet dt{color:#555}#sheet dd{margin:0;font-weight:600}#sTech{margin:8px 0 0;font-size:13px;color:#555}#sTech summary{cursor:pointer;font-weight:600;padding:6px 0;min-height:32px;list-style-position:inside}#sIds{margin:4px 0 0}#sExtra{margin:8px 0 0;font-size:13px;color:#555;line-height:1.4}
 #close{position:absolute;right:10px;top:8px;width:44px;height:44px;border:0;background:#eee;border-radius:50%;font-size:22px}
 .unk{color:#888;font-weight:400}
 .ship{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -47,6 +47,7 @@ body.ask-open #askBtn,body.card-open #askBtn{display:none}
 #askLog .wait{opacity:.7}
 #askLog .conf{display:block;width:max-content;margin:8px 0 0;font-size:13px;font-weight:600;color:#0b1220;padding:3px 10px;border-radius:999px;background:#eee}
 #askLog .conf.high{background:#dcfce7}#askLog .conf.low{background:#fef3c7}
+#askLog .topic{align-self:stretch;text-align:center;font-size:12px;font-weight:600;color:#64748b;border-top:1px solid #cbd5e1;padding-top:6px;margin-top:4px}
 #askLog .err{align-self:flex-start;max-width:92%;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:600;color:#b91c1c}
 #askLog .fups{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}#askLog .fup{border:1px solid #1d4ed8;background:transparent;color:inherit;border-radius:999px;padding:6px 10px;font-size:13px}
 #askLog .askShow{background:#1d4ed8;color:#fff;font-weight:700;font-size:15px;margin-top:8px;border:0;border-radius:999px;padding:8px 12px}
@@ -118,7 +119,7 @@ html[data-theme=night] #credits{background:rgba(20,24,30,.8);color:#ccd}html[dat
 <div id="note"><div id="noteMain"></div><div id="noteDetail" style="color:#555;font-size:13px"></div><button id="demoBtn" type="button" style="display:none;margin-top:6px;border:0;background:#eef2f5;border-radius:999px;padding:8px 12px;font-weight:600;color:#124">Watch Corpus Christi demo (replay)</button></div>
 <div id="credits"><a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · AIS data via <a href="https://aisstream.io" target="_blank">aisstream.io</a></div>
 <div id="sheet" role="dialog" aria-label="Ship details"><button id="close" aria-label="Close">×</button><h2 id="sName"><img id="sIcon" alt="" width="28" height="28" style="vertical-align:-5px;margin-right:8px" onerror="if(!this.src.endsWith('/unknown.svg'))this.src='/assets/ship-types/unknown.svg'"><span id="sNameT"></span></h2><div id="sFlag" hidden></div>
-<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt id="sAgeLbl">Updated</dt><dd id="sAge"></dd></dl><p id="sExtra" hidden></p><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Explain what I’m looking at</button><button id="askAbout" type="button">Ask Muse about this</button></div>
+<dl><dt>Type</dt><dd id="sType"></dd><dt>Speed</dt><dd id="sSog"></dd><dt>Heading</dt><dd id="sHdg"></dd><dt>Destination</dt><dd id="sDest"></dd><dt id="sAgeLbl">Updated</dt><dd id="sAge"></dd></dl><details id="sTech"><summary>Technical details</summary><p id="sExtra" hidden></p><p id="sIds"></p></details><figure id="sPhoto" hidden><img id="sPhotoImg" alt="" decoding="async"><figcaption id="sPhotoCap"></figcaption></figure><button id="tellMore" type="button">Explain what I’m looking at</button><button id="askAbout" type="button">Ask Muse about this</button></div>
 <button id="lookBtn" type="button" aria-pressed="false" aria-label="Looking at" title="Looking at"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor"/></svg></button><div id="toast" role="status"></div>
 <button id="askBtn" type="button">Ask Muse</button>
 <div id="askPanel" role="dialog" aria-label="Ask Muse"><div id="askHead"><button id="askChip" type="button" aria-label="Show ship card"><img id="askChipIcon" alt="" width="20" height="20"><span id="askChipName"></span></button><p id="askSel"></p><button id="askX" aria-label="Close" type="button">×</button></div>
@@ -194,7 +195,7 @@ function fillCard(s){$('sNameT').innerHTML=unk(s.name);const fl=MmsiMid.flagOf(s
  $('sHdg').innerHTML=(s.hdg??s.cog)==null?unk():Math.round(s.hdg??s.cog)+'°';$('sDest').innerHTML=unk(s.dest);$('sAgeLbl').textContent=ageLabel(sceneMode);$('sAge').textContent=ageText(s.ageSec,s.stale,sceneMode);fillExtra(s)}
 const NAV=['Under way (engine)','At anchor','Not under command','Restricted maneuverability','Constrained by draught','Moored','Aground','Fishing','Under way (sailing)'];
 function aisExtra(s){const e=v=>String(v).replace(/[<>&]/g,''),p=[];if(s.callsign)p.push(e(s.callsign));if(s.imo)p.push('IMO '+e(s.imo));if(s.length&&s.beam)p.push(e(s.length)+'×'+e(s.beam)+' m');if(s.draught)p.push('draught '+e(s.draught)+' m');if(s.navStatus!=null&&NAV[s.navStatus])p.push(NAV[s.navStatus]);if(s.eta)p.push('ETA '+e(s.eta));return p.join(' · ')}
-function fillExtra(s){const x=$('sExtra'),t=aisExtra(s);x.textContent=t;x.hidden=!t}
+function fillExtra(s){const x=$('sExtra'),t=aisExtra(s);x.textContent=t;x.hidden=!t;$('sIds').textContent='MMSI '+s.mmsi+(s.lat!=null&&s.lon!=null?' · '+(+s.lat).toFixed(4)+', '+(+s.lon).toFixed(4):'')}
 let trailFor=null;
 async function loadTrail(){const id=selected;if(!engine||!engine.trail)return;if(!id){trailFor=null;engine.trail([]);return}
  try{const r=await fetch('/ships/'+id+'/trail',{cache:'no-store'});const pts=r.ok?await r.json():[];if(selected!==id)return;
@@ -206,7 +207,7 @@ async function loadPhoto(s){const f=$('sPhoto'),im=$('sPhotoImg'),cap=$('sPhotoC
   im.onerror=()=>{f.hidden=true;layoutAsk()};im.onload=()=>{if(photoFor===s.mmsi){f.hidden=false;layoutAsk()}};im.alt=p.match==='name'?'Photo of '+(s.name||'vessel'):'Illustrative '+ShipType.shipKind(s.type)+' vessel';
   cap.textContent='';if(p.match==='name'&&/^https:\/\/commons\.wikimedia\.org\//.test(p.url)){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=p.attribution+(p.license?' · '+p.license:'');cap.appendChild(a)}else cap.textContent='Type photo (not this vessel)';
   const src=p.thumbUrl||p.url;if(im.getAttribute('src')===src&&im.complete&&im.naturalWidth){f.hidden=false;layoutAsk();return}im.src=src}catch{f.hidden=true;layoutAsk()}}
-function openCard(mmsi){selected=mmsi;fillCard(ships[mmsi]);syncTellMore();loadPhoto(ships[mmsi]);$('sheet').classList.add('open');document.body.classList.add('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
+function openCard(mmsi){if(String(mmsi)!==String(selected))$('sTech').open=false;selected=mmsi;askMmsi=mmsi;fillCard(ships[mmsi]);syncTellMore();loadPhoto(ships[mmsi]);$('sheet').classList.add('open');document.body.classList.add('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
 function closeCard(){selected=null;$('sheet').classList.remove('open');document.body.classList.remove('card-open');render();loadTrail();syncAskMeta();layoutAsk()}
 $('close').onclick=closeCard;
 let demo=false; // explicit opt-in only; never auto-switched
@@ -260,9 +261,12 @@ let lookHere=null;setInterval(()=>{if(lookOn&&here&&here!==lookHere){lookHere=he
  center();locate();poll();document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollT);else poll()});window.addEventListener('online',poll);
  if(map&&map.on)map.on('moveend',()=>{clearTimeout(pollT);pollT=setTimeout(poll,400)})})();
 function askId(){return selected||askMmsi||null}
+// Continuity: when the vessel being asked about changes, drop a divider so answers stay attributable.
+let talkId=null;
+function noteTopic(id){id=id==null?null:String(id);if(id===talkId)return;const first=talkId===null&&!$('askLog').lastChild;talkId=id;if(first||!id)return;const s=ships[id],n=askBubble('topic','Now talking about '+(s&&s.name||('MMSI '+id)));n.dataset.mmsi=id;n.setAttribute('role','separator')}
 function syncAskMeta(){const id=askId(),s=id&&ships[id];syncAskChip();$('askSel').textContent=id?'About: '+(s&&s.name||('MMSI '+id)):'Ask about ships on the map';
  $('askQ').placeholder=s&&s.name?('Ask about '+s.name+'…'):id?'Ask about this ship…':"What's that ship?"}
-function openAsk(mmsi){startCompass();askMmsi=mmsi||selected||null;syncAskMeta();document.body.classList.add('ask-open');$('askPanel').classList.add('open');layoutAsk();$('askQ').focus()}
+function openAsk(mmsi){startCompass();askMmsi=selected||mmsi||null;syncAskMeta();document.body.classList.add('ask-open');$('askPanel').classList.add('open');layoutAsk();$('askQ').focus()}
 function closeAsk(){document.body.classList.remove('ask-open');$('askPanel').classList.remove('open');layoutAsk()}
 // Mobile Ask mode (<768px): chip = collapsed card; visualViewport keeps the sticky input above the keyboard.
 function syncAskChip(){const id=askId(),s=id&&ships[id],c=$('askChip');c.classList.toggle('on',!!id);if(!id)return;
@@ -277,11 +281,11 @@ function viewBox(){try{if(map.getBounds){const b=map.getBounds();return{n:b.getN
 function evLabels(n,text){n.textContent='';String(text).split(/(\((?:Reported|Inferred|Unknown)\))/).forEach(p=>{const m=/^\((Reported|Inferred|Unknown)\)$/.exec(p);if(m){const t=document.createElement('span');t.className='ev ev-'+m[1].toLowerCase();t.textContent=m[1];n.appendChild(t)}else if(p)n.append(p)})}
 function askBubble(cls,text){const n=document.createElement('div');n.className=cls;if(text!=null)n.textContent=text;$('askLog').appendChild(n);n.scrollIntoView({block:'end'});return n}
 $('askForm').onsubmit=async e=>{e.preventDefault();const q=$('askQ').value.trim();if(!q)return;const go=$('askGo');go.disabled=true;
- const id=askId();syncAskMeta();askBubble('me',q);$('askQ').value='';const think=askBubble('ans wait','Thinking…');
+ const id=askId();syncAskMeta();noteTopic(id);askBubble('me',q).dataset.mmsi=id||'';$('askQ').value='';const think=askBubble('ans wait','Thinking…');think.dataset.mmsi=id||'';
  const body={q};if(id)body.mmsi=+id;const v=map&&viewBox();if(v)body.view=v;if(here){body.lat=here.lat;body.lon=here.lon;if(compass!=null)body.heading=compass}
  try{const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok){think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
-   if(d.mmsi&&ships[d.mmsi]&&d.mmsi!==selected){const b=document.createElement('button');b.type='button';b.className='askShow';b.textContent='Show ship';b.onclick=()=>openCard(d.mmsi);think.appendChild(b)}
+  if(r.ok){if(think.dataset.mmsi&&talkId&&think.dataset.mmsi!==String(talkId))return;think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);const c=document.createElement('span');c.className='conf '+d.confidence;c.textContent=d.confidence+' confidence';think.appendChild(c);
+   if(d.mmsi&&ships[d.mmsi]&&String(d.mmsi)!==String(selected)){const b=document.createElement('button');b.type='button';b.className='askShow';b.textContent='Show ship';b.onclick=()=>openCard(d.mmsi);think.appendChild(b)}
    think.scrollIntoView({block:'end'})}
   else{const msg=r.status===429?'Too many questions — try again in a few minutes.':r.status===503?'Ask is not set up on this server yet.':r.status===502?(d.error||'Muse had a problem. Try again.'):(d.error||'Could not ask right now.');
    think.className='err';think.textContent=msg}}
@@ -293,11 +297,11 @@ let tmBusy=null;const EXPLAIN_LABEL='Explain what I’m looking at';
 const FOLLOWUPS=['What does this type of ship do?','Can you explain its reported destination?','Is it moving or stopped right now?'];
 function addFollowups(el,mmsi){const w=document.createElement('div');w.className='fups';FOLLOWUPS.forEach(q=>{const b=document.createElement('button');b.type='button';b.className='fup';b.textContent=q;b.onclick=()=>askFollowup(q,mmsi);w.appendChild(b)});el.appendChild(w)}
 function askFollowup(q,mmsi){if(mmsi)askMmsi=mmsi;if(mmsi&&ships[mmsi]&&selected!==mmsi)openCard(mmsi);$('askQ').value=q;$('askForm').requestSubmit()}
-function syncTellMore(){const b=$('tellMore'),s=selected&&ships[selected],ok=!!(s&&s.mmsi&&s.name);b.disabled=!ok||tmBusy===selected;b.textContent=tmBusy===selected?'Looking up…':EXPLAIN_LABEL;b.title=ok?'':'Needs a ship name and MMSI'}
-$('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi||!s.name||tmBusy)return;tmBusy=s.mmsi;syncTellMore();openAsk(s.mmsi);
- askBubble('me','Explain what I’m looking at: '+s.name);const think=askBubble('ans wait','Looking up…');const body={mmsi:+s.mmsi,name:String(s.name).slice(0,60)};if(s.imo&&/^\d{7}$/.test(String(s.imo)))body.imo=String(s.imo);
+function syncTellMore(){const b=$('tellMore'),s=selected&&ships[selected],ok=!!(s&&s.mmsi&&s.name);b.disabled=!ok||!!tmBusy;b.textContent=tmBusy===selected?'Looking up…':EXPLAIN_LABEL;b.title=ok?'':'Needs a ship name and MMSI'}
+$('tellMore').onclick=async()=>{const s=selected&&ships[selected];if(!s||!s.mmsi||!s.name||tmBusy)return;const sid=s.mmsi;tmBusy=sid;syncTellMore();openAsk(sid);noteTopic(sid);
+ askBubble('me','Explain what I’m looking at: '+s.name).dataset.mmsi=sid;const think=askBubble('ans wait','Looking up…');think.dataset.mmsi=sid;const body={mmsi:+s.mmsi,name:String(s.name).slice(0,60)};if(s.imo&&/^\d{7}$/.test(String(s.imo)))body.imo=String(s.imo);
  try{const r=await fetch('/tell-more',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer':VID},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));
-  if(r.ok&&d.answer){think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);
+  if(r.ok&&d.answer){if(think.dataset.mmsi&&talkId&&think.dataset.mmsi!==String(talkId))return;think.classList.remove('wait');think.style.whiteSpace='pre-line';evLabels(think,d.answer);
    if(Array.isArray(d.sources)&&d.sources.length){const p=document.createElement('span');p.className='src';p.append('Sources: ');d.sources.slice(0,3).forEach((x,i)=>{if(!/^https?:\/\//.test(x.url))return;if(i)p.append(' · ');const a=document.createElement('a');a.href=x.url;a.target='_blank';a.rel='noopener';a.textContent=x.title||x.url;p.appendChild(a)});think.appendChild(p)}
    addFollowups(think,s.mmsi);
    think.scrollIntoView({block:'end'})}
