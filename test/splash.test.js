@@ -27,7 +27,7 @@ test('splash reduced motion and post-dismiss stop animations', () => {
 });
 
 test('splash shell cache bumped', () => {
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /harbor-shell-v10/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /harbor-shell-v1[1-9]/);
 });
 
 // Simulate dismiss logic with fake timers/clock.
