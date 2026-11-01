@@ -218,8 +218,11 @@ async function handleTellMore(req, res, body) {
   const museKey = process.env.MUSE_API_KEY || '';
   if (!museKey) return send(res, 503, { error: 'Tell me more is not configured' });
   if (!askLimiter.take(viewerId(req))) return send(res, 429, { error: 'Too many questions. Try again in a few minutes.' });
-  const s = liveStore.get(j.mmsi) || replayStore.get(j.mmsi);
-  const ship = { mmsi: j.mmsi, name: j.name || (s && s.name) || null, imo: j.imo || (s && s.imo) || null };
+  const ls = liveStore.get(j.mmsi), s = (ls && ls.lat != null ? ls : null) || replayStore.get(j.mmsi);
+  if (!s || s.lat == null) return send(res, 404, { error: 'That ship is no longer on the map.' });
+  const now = Date.now(), md = s === ls ? 'live' : 'replay';
+  const ship = { ...s, mmsi: j.mmsi, name: j.name || s.name || null, imo: j.imo || s.imo || null,
+    ageSec: s.posAt ? Math.round((now - s.posAt) / 1000) : null, mode: md, asOf: new Date(now).toISOString() };
   try { send(res, 200, await tellMore.callTellMore({ key: museKey, url: process.env.MUSE_RESPONSES_URL || undefined, ship })); }
   catch (e) {
     console.log('tell-more: failed', e.code || 'error');
