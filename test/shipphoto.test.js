@@ -29,7 +29,7 @@ test('non-free license or weak match falls back to type photo', async () => {
 test('generic name skips Commons entirely; unknown kind -> unknown.webp', async () => {
   const f = fake([]); const p = await makeShipPhoto({ fetchFn: f })('UNKNOWN', 'spaceship');
   assert.strictEqual(f.calls, 0); assert.strictEqual(p.url, '/assets/ship-photos/unknown.webp');
-  assert.strictEqual(p.attribution, 'Type photo (not this vessel)');
+  assert.strictEqual(p.attribution, 'Representative vessel-type photo — not this specific ship');
 });
 
 test('cache ~24h by normalized name', async () => {
