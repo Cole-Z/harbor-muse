@@ -1,3 +1,4 @@
+
 # Harbor Muse 🚢
 
 **Ask the harbor what's out there.** A one-page live ship tracker for US waters, centered on wherever you are, where you can ask Meta's Muse models about the ships you see on the map, by typing (your phone keyboard's dictation works too).
@@ -5,8 +6,7 @@
 > 🏁 **Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) (Cerebral Valley), Indie track, solo.**
 > All work in this repo was created during the event window, **Oct 26 – Nov 4, 2026**, and the commit history reflects that.
 
-🎥 **Demo video (3 min):** _coming soon_
-🌐 **Live demo:** _coming soon_
+🎥 **Demo video (3:19):** [watch / download](docs/demo/harbor-muse-demo.mp4) · YouTube: [watch on YouTube](https://youtu.be/JKQHclwB5n0)
 
 ---
 
@@ -49,14 +49,21 @@ Open `http://localhost:3000` (set `PORT` to change it). Geolocation needs a secu
 
 Rebuild the replay file from recordings: `node tools/build-replay.js recording.jsonl ...` (capped at 2 MB). Record more: `node tools/record.js recording.jsonl 30`.
 
+## Demo
+
+https://github.com/Cole-Z/harbor-muse/raw/main/docs/demo/harbor-muse-demo.mp4
+
+- Video file: [`docs/demo/harbor-muse-demo.mp4`](docs/demo/harbor-muse-demo.mp4) (3:19, 720p)
+- YouTube: [watch on YouTube](https://youtu.be/JKQHclwB5n0)
+- Demo runs locally (filmed over LAN); there is no hosted version for judging.
+
 ## Roadmap
 
 - [x] Live ships on the map (aisstream.io + MapLibre/OpenFreeMap)
 - [x] US-wide: map and feed follow your location
 - [x] Ask Muse about ships from live data
 - [x] Replay mode with recorded feed data
-- [ ] Hosted live demo
-- [ ] 3-minute demo video
+- [x] Demo video (3:19), submitted Nov 2, 2026 — see [Demo](#demo)
 
 ## Credits
 
@@ -67,3 +74,4 @@ Rebuild the replay file from recordings: `node tools/build-replay.js recording.j
 ## Author
 
 **Cole Zill**, [GitHub](https://github.com/cole-z) · [Portfolio](https://cole-z.github.io/)
+
